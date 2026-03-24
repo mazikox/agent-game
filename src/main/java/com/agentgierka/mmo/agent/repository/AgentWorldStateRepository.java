@@ -20,7 +20,7 @@ import java.util.stream.Collectors;
 public class AgentWorldStateRepository {
 
     private final RedisTemplate<String, AgentWorldState> agentWorldStateTemplate;
-    private final RedisTemplate<String, String> stringRedisTemplate;
+    private final RedisTemplate<String, String> mmoStringRedisTemplate;
     private static final String KEY_PREFIX = "agent:state:";
     private static final String ACTIVE_AGENTS_SET = "agent:active_ids";
 
@@ -29,9 +29,9 @@ public class AgentWorldStateRepository {
         agentWorldStateTemplate.opsForValue().set(key, state);
         
         if (state.getStatus() == AgentStatus.MOVING) {
-            stringRedisTemplate.opsForSet().add(ACTIVE_AGENTS_SET, state.getAgentId().toString());
+            mmoStringRedisTemplate.opsForSet().add(ACTIVE_AGENTS_SET, state.getAgentId().toString());
         } else {
-            stringRedisTemplate.opsForSet().remove(ACTIVE_AGENTS_SET, state.getAgentId().toString());
+            mmoStringRedisTemplate.opsForSet().remove(ACTIVE_AGENTS_SET, state.getAgentId().toString());
         }
     }
 
@@ -40,7 +40,7 @@ public class AgentWorldStateRepository {
     }
 
     public List<AgentWorldState> findAllActive() {
-        Set<String> activeIds = stringRedisTemplate.opsForSet().members(ACTIVE_AGENTS_SET);
+        Set<String> activeIds = mmoStringRedisTemplate.opsForSet().members(ACTIVE_AGENTS_SET);
         if (activeIds == null || activeIds.isEmpty()) {
             return Collections.emptyList();
         }
@@ -56,6 +56,6 @@ public class AgentWorldStateRepository {
 
     public void delete(UUID agentId) {
         agentWorldStateTemplate.delete(KEY_PREFIX + agentId);
-        stringRedisTemplate.opsForSet().remove(ACTIVE_AGENTS_SET, agentId.toString());
+        mmoStringRedisTemplate.opsForSet().remove(ACTIVE_AGENTS_SET, agentId.toString());
     }
 }
