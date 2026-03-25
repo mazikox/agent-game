@@ -1,5 +1,7 @@
 package com.agentgierka.mmo.agent.service;
 
+import com.agentgierka.mmo.agent.exception.AgentNotFoundException;
+import com.agentgierka.mmo.agent.exception.InvalidMovementException;
 import com.agentgierka.mmo.agent.model.Agent;
 import com.agentgierka.mmo.agent.model.AgentStatus;
 import com.agentgierka.mmo.agent.model.AgentWorldState;
@@ -35,7 +37,7 @@ public class AgentService {
     @Transactional(readOnly = true)
     public Agent findById(UUID id) {
         Agent agent = agentRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Agent not found"));
+                .orElseThrow(() -> new AgentNotFoundException(id.toString()));
 
         // Check if agent is currently moving (recorded in Redis)
         AgentWorldState worldState = agentWorldStateRepository.findById(id);
@@ -56,7 +58,7 @@ public class AgentService {
     @Transactional
     public Agent moveTo(UUID agentId, Integer targetX, Integer targetY) {
         Agent agent = agentRepository.findById(agentId)
-                .orElseThrow(() -> new RuntimeException("Agent not found"));
+                .orElseThrow(() -> new AgentNotFoundException(agentId.toString()));
 
         if (agent.getCurrentLocation() != null) {
             validateBounds(agent, targetX, targetY);
@@ -86,7 +88,7 @@ public class AgentService {
     private void validateBounds(Agent agent, Integer x, Integer y) {
         if (x < 0 || x > agent.getCurrentLocation().getWidth() ||
             y < 0 || y > agent.getCurrentLocation().getHeight()) {
-            throw new RuntimeException("Target coordinates out of bounds");
+            throw new InvalidMovementException("Target coordinates (" + x + "," + y + ") are outside the location boundaries.");
         }
     }
 
@@ -96,7 +98,7 @@ public class AgentService {
     @Transactional
     public Agent updateStatus(UUID agentId, AgentStatus status, String description) {
         Agent agent = agentRepository.findById(agentId)
-                .orElseThrow(() -> new RuntimeException("Agent not found"));
+                .orElseThrow(() -> new AgentNotFoundException(agentId.toString()));
 
         agent.setStatus(status);
         agent.setCurrentActionDescription(description);
