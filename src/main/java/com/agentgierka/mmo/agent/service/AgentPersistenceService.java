@@ -1,5 +1,6 @@
 package com.agentgierka.mmo.agent.service;
 
+import com.agentgierka.mmo.agent.event.AgentArrivedEvent;
 import com.agentgierka.mmo.agent.model.Agent;
 import com.agentgierka.mmo.agent.model.AgentStatus;
 import com.agentgierka.mmo.agent.model.AgentWorldState;
@@ -7,6 +8,7 @@ import com.agentgierka.mmo.agent.repository.AgentRepository;
 import com.agentgierka.mmo.agent.repository.AgentWorldStateRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -15,12 +17,14 @@ import org.springframework.transaction.annotation.Transactional;
  * Separated to ensure Spring @Transactional proxy works correctly.
  */
 @Service
+
 @RequiredArgsConstructor
 @Slf4j
 public class AgentPersistenceService {
 
     private final AgentRepository agentRepository;
     private final AgentWorldStateRepository agentWorldStateRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
     public void finalizeMovement(AgentWorldState state) {
@@ -35,6 +39,14 @@ public class AgentPersistenceService {
         agentRepository.save(agent);
         agentWorldStateRepository.delete(state.getAgentId());
         
-        log.info("Agent {} reached destination and state was flushed to Postgres", agent.getName());
+        // Publish event to notify other systems (like portals) that the agent has arrived
+        eventPublisher.publishEvent(new AgentArrivedEvent(
+                agent.getId(),
+                agent.getCurrentLocation(),
+                agent.getX(),
+                agent.getY()
+        ));
+        
+        log.info("Agent {} reached destination and event was published", agent.getName());
     }
 }

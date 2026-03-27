@@ -9,6 +9,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.concurrent.Executors;
 
 /**
  * The core game engine responsible for processing the world state at regular intervals.
@@ -40,10 +41,12 @@ public class GameEngine {
             return;
         }
  
-        // TODO: Use Java 25 Structured Concurrency (StructuredTaskScope) for parallel 
-        // movement processing to scale to thousands of agents without blocking the main tick thread.
-        for (AgentWorldState state : activeAgents) {
-            updateAgentPosition(state);
+        try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
+            for (AgentWorldState state : activeAgents) {
+                executor.submit(() -> updateAgentPosition(state));
+            }
+        } catch (Exception e) {
+            log.error("Error during parallel movement processing", e);
         }
     }
 
@@ -54,11 +57,17 @@ public class GameEngine {
         Integer tarY = state.getTargetY();
 
         // 1. Calculate next step
+        int speed = state.getSpeed() != null ? state.getSpeed() : 1;
+
         if (!curX.equals(tarX)) {
-            state.setX(curX < tarX ? curX + 1 : curX - 1);
+            int diff = tarX - curX;
+            int step = Math.min(Math.abs(diff), speed);
+            state.setX(curX + (diff > 0 ? step : -step));
         }
         if (!curY.equals(tarY)) {
-            state.setY(curY < tarY ? curY + 1 : curY - 1);
+            int diff = tarY - curY;
+            int step = Math.min(Math.abs(diff), speed);
+            state.setY(curY + (diff > 0 ? step : -step));
         }
 
         // 2. Check if destination is reached

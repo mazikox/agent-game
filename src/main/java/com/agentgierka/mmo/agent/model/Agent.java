@@ -37,11 +37,14 @@ public class Agent {
     private Integer x;
     private Integer y;
 
+    private Integer strength;
+    private Integer dexterity;
+
     private Integer targetX;
     private Integer targetY;
 
-    private Integer strength;
-    private Integer dexterity;
+    @Builder.Default
+    private Integer speed = 1;
 
     @Enumerated(EnumType.STRING)
     private AgentStatus status;

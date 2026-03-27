@@ -22,4 +22,7 @@ public class AgentWorldState implements Serializable {
     private Integer targetX;
     private Integer targetY;
     private AgentStatus status;
+    
+    @Builder.Default
+    private Integer speed = 1;
 }

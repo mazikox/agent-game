@@ -10,6 +10,8 @@ import com.agentgierka.mmo.agent.repository.AgentWorldStateRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.UUID;
 
@@ -71,16 +73,24 @@ public class AgentService {
         agent.setCurrentActionDescription("Preparing to move to (" + targetX + ", " + targetY + ")");
         Agent savedAgent = agentRepository.save(agent);
 
-        // 2. Push to World State (Redis)
-        AgentWorldState worldState = AgentWorldState.builder()
-                .agentId(agentId)
-                .x(agent.getX())
-                .y(agent.getY())
-                .targetX(targetX)
-                .targetY(targetY)
-                .status(AgentStatus.MOVING)
-                .build();
-        agentWorldStateRepository.save(worldState);
+        // 2. Push to World State (Redis) ONLY after Postgres transaction is committed
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    AgentWorldState worldState = AgentWorldState.builder()
+                            .agentId(agentId)
+                            .x(agent.getX())
+                            .y(agent.getY())
+                            .targetX(targetX)
+                            .targetY(targetY)
+                            .status(AgentStatus.MOVING)
+                            .speed(agent.getSpeed())
+                            .build();
+                    agentWorldStateRepository.save(worldState);
+                }
+            });
+        }
 
         return savedAgent;
     }
@@ -90,6 +100,34 @@ public class AgentService {
             y < 0 || y > agent.getCurrentLocation().getHeight()) {
             throw new InvalidMovementException("Target coordinates (" + x + "," + y + ") are outside the location boundaries.");
         }
+    }
+
+    /**
+     * Teleports an agent to a specific location and coordinates.
+     * This is a forced movement that bypasses regular travel.
+     */
+    @Transactional
+    public Agent teleportTo(UUID agentId, com.agentgierka.mmo.world.Location location, Integer x, Integer y) {
+        Agent agent = agentRepository.findById(agentId)
+                .orElseThrow(() -> new AgentNotFoundException(agentId.toString()));
+
+        agent.setCurrentLocation(location);
+        agent.setX(x);
+        agent.setY(y);
+        agent.setStatus(AgentStatus.IDLE);
+        agent.setCurrentActionDescription("Teleported to " + location.getName());
+
+        Agent savedAgent = agentRepository.save(agent);
+
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    agentWorldStateRepository.delete(agentId); // Ensure Redis state is cleared correctly
+                }
+            });
+        }
+        return savedAgent;
     }
 
     /**
