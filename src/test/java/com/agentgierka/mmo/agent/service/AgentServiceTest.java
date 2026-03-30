@@ -9,15 +9,19 @@ import com.agentgierka.mmo.world.Location;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -30,8 +34,30 @@ class AgentServiceTest {
     @Mock
     private AgentWorldStateRepository agentWorldStateRepository;
 
+    @Mock
+    private com.agentgierka.mmo.ai.service.AgentThinkingService agentThinkingService;
+
     @InjectMocks
     private AgentService agentService;
+
+    @Test
+    @DisplayName("Should assign goal and trigger thinking")
+    void shouldAssignGoalAndTriggerThinking() {
+        // Given
+        UUID agentId = UUID.randomUUID();
+        Agent agent = Agent.builder().id(agentId).name("Commander").build();
+        String goal = "Go to the safe zone";
+
+        when(agentRepository.findById(agentId)).thenReturn(Optional.of(agent));
+        when(agentRepository.save(any(Agent.class))).thenReturn(agent);
+
+        // When
+        agentService.assignGoal(agentId, goal);
+
+        // Then
+        verify(agentRepository).save(argThat(a -> goal.equals(a.getGoal())));
+        verify(agentThinkingService).processThinking(agentId);
+    }
 
     @Test
     @DisplayName("Should return Postgres data when agent is not moving in Redis")
@@ -114,21 +140,32 @@ class AgentServiceTest {
                 .id(agentId)
                 .currentLocation(forest)
                 .x(50).y(50)
+                .speed(5)
                 .build();
 
-        when(agentRepository.findById(agentId)).thenReturn(Optional.of(agent));
-        when(agentRepository.save(any(Agent.class))).thenReturn(agent);
+        try (var mockedSync = mockStatic(TransactionSynchronizationManager.class)) {
+            mockedSync.when(TransactionSynchronizationManager::isSynchronizationActive).thenReturn(true);
+            
+            when(agentRepository.findById(agentId)).thenReturn(Optional.of(agent));
+            when(agentRepository.save(any(Agent.class))).thenReturn(agent);
 
-        // When
-        agentService.moveTo(agentId, 60, 60);
+            // When
+            agentService.moveTo(agentId, 60, 60);
 
-        // Then
-        verify(agentRepository).save(argThat(a -> 
-            a.getStatus() == AgentStatus.MOVING && a.getTargetX() == 60
-        ));
-        verify(agentWorldStateRepository).save(argThat(ws -> 
-            ws.getAgentId().equals(agentId) && ws.getTargetX() == 60
-        ));
+            // Then
+            verify(agentRepository).save(argThat(a -> 
+                a.getStatus() == AgentStatus.MOVING && a.getTargetX() == 60
+            ));
+
+            // Capture and execute the synchronization logic
+            var captor = ArgumentCaptor.forClass(TransactionSynchronization.class);
+            mockedSync.verify(() -> TransactionSynchronizationManager.registerSynchronization(captor.capture()));
+            captor.getValue().afterCommit();
+
+            verify(agentWorldStateRepository).save(argThat(ws -> 
+                ws.getAgentId().equals(agentId) && ws.getTargetX() == 60
+            ));
+        }
     }
 
     @Test

@@ -50,7 +50,7 @@ class GameEngineTest {
         // Then
         assertEquals(51, state.getX());
         assertEquals(51, state.getY());
-        verify(agentWorldStateRepository).save(state);
+        verify(agentWorldStateRepository).saveAll(anyList());
         verifyNoInteractions(agentPersistenceService);
     }
 
@@ -74,7 +74,7 @@ class GameEngineTest {
         // Then
         assertEquals(51, state.getX());
         assertEquals(60, state.getY());
-        verify(agentWorldStateRepository).save(state);
+        verify(agentWorldStateRepository).saveAll(anyList());
     }
 
     @Test
@@ -99,7 +99,7 @@ class GameEngineTest {
         assertEquals(60, state.getY());
         verify(agentPersistenceService).finalizeMovement(state);
         // Should not save to Redis again if finalized
-        verify(agentWorldStateRepository, never()).save(state);
+        verify(agentWorldStateRepository, never()).saveAll(anyList());
     }
 
     @Test
@@ -112,7 +112,7 @@ class GameEngineTest {
         gameEngine.tick();
 
         // Then
-        verify(agentWorldStateRepository, never()).save(any());
+        verify(agentWorldStateRepository, never()).saveAll(anyList());
         verifyNoInteractions(agentPersistenceService);
     }
 }

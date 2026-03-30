@@ -8,7 +8,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Executors;
 
 /**
@@ -40,42 +43,26 @@ public class GameEngine {
         if (activeAgents.isEmpty()) {
             return;
         }
- 
+
+        Queue<AgentWorldState> toUpdate = new ConcurrentLinkedQueue<>();
+
         try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
             for (AgentWorldState state : activeAgents) {
-                executor.submit(() -> updateAgentPosition(state));
+                executor.submit(() -> {
+                    if (state.updatePosition()) {
+                        agentWorldStateRepository.delete(state.getAgentId());
+                        agentPersistenceService.finalizeMovement(state);
+                    } else {
+                        toUpdate.add(state);
+                    }
+                });
             }
         } catch (Exception e) {
             log.error("Error during parallel movement processing", e);
         }
-    }
 
-    private void updateAgentPosition(AgentWorldState state) {
-        Integer curX = state.getX();
-        Integer curY = state.getY();
-        Integer tarX = state.getTargetX();
-        Integer tarY = state.getTargetY();
-
-        // 1. Calculate next step
-        int speed = state.getSpeed() != null ? state.getSpeed() : 1;
-
-        if (!curX.equals(tarX)) {
-            int diff = tarX - curX;
-            int step = Math.min(Math.abs(diff), speed);
-            state.setX(curX + (diff > 0 ? step : -step));
-        }
-        if (!curY.equals(tarY)) {
-            int diff = tarY - curY;
-            int step = Math.min(Math.abs(diff), speed);
-            state.setY(curY + (diff > 0 ? step : -step));
-        }
-
-        // 2. Check if destination is reached
-        if (state.getX().equals(tarX) && state.getY().equals(tarY)) {
-            agentPersistenceService.finalizeMovement(state);
-        } else {
-            // Update Redis state for the next tick
-            agentWorldStateRepository.save(state);
+        if (!toUpdate.isEmpty()) {
+            agentWorldStateRepository.saveAll(new ArrayList<>(toUpdate));
         }
     }
 

@@ -13,4 +13,7 @@ public interface PortalRepository extends JpaRepository<Portal, UUID> {
      * Finds a portal based on the source location and coordinates.
      */
     Optional<Portal> findBySourceLocationAndSourceXAndSourceY(Location sourceLocation, Integer sourceX, Integer sourceY);
+
+    java.util.List<Portal> findAllBySourceLocation(Location sourceLocation);
 }
+

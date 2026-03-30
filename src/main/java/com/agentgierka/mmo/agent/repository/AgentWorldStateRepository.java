@@ -8,6 +8,7 @@ import org.springframework.stereotype.Repository;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -32,6 +33,28 @@ public class AgentWorldStateRepository {
             mmoStringRedisTemplate.opsForSet().add(ACTIVE_AGENTS_SET, state.getAgentId().toString());
         } else {
             mmoStringRedisTemplate.opsForSet().remove(ACTIVE_AGENTS_SET, state.getAgentId().toString());
+        }
+    }
+
+    public void saveAll(List<AgentWorldState> states) {
+        if (states.isEmpty()) {
+            return;
+        }
+
+        Map<String, AgentWorldState> keyValues = states.stream()
+                .collect(Collectors.toMap(
+                        state -> KEY_PREFIX + state.getAgentId(),
+                        state -> state
+                ));
+
+        agentWorldStateTemplate.opsForValue().multiSet(keyValues);
+
+        for (AgentWorldState state : states) {
+            if (state.getStatus() == AgentStatus.MOVING) {
+                mmoStringRedisTemplate.opsForSet().add(ACTIVE_AGENTS_SET, state.getAgentId().toString());
+            } else {
+                mmoStringRedisTemplate.opsForSet().remove(ACTIVE_AGENTS_SET, state.getAgentId().toString());
+            }
         }
     }
 

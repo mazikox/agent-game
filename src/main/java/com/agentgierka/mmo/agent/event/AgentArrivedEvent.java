@@ -1,5 +1,6 @@
 package com.agentgierka.mmo.agent.event;
 
+import com.agentgierka.mmo.agent.model.MovementType;
 import com.agentgierka.mmo.world.Location;
 import java.util.UUID;
 
@@ -11,5 +12,6 @@ public record AgentArrivedEvent(
     UUID agentId,
     Location location,
     Integer x,
-    Integer y
+    Integer y,
+    MovementType type
 ) {}
