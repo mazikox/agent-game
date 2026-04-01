@@ -1,10 +1,7 @@
 package com.agentgierka.mmo.agent.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import lombok.extern.jackson.Jacksonized;
 import java.io.Serializable;
 import java.util.UUID;
@@ -14,8 +11,11 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
  * Represents the volatile, real-time state of an agent stored in Redis.
  * This is used for high-frequency updates (e.g., movement ticks).
  */
-@Data
-@Builder
+@Getter
+@Setter(AccessLevel.PRIVATE)
+@ToString
+@EqualsAndHashCode
+@Builder(toBuilder = true)
 @Jacksonized
 @NoArgsConstructor
 @AllArgsConstructor
@@ -33,7 +33,7 @@ public class AgentWorldState implements Serializable {
 
     @JsonIgnore
     public boolean updatePosition() {
-        if (isAtTarget()) {
+        if (targetX == null || targetY == null || isAtTarget()) {
             return true;
         }
 

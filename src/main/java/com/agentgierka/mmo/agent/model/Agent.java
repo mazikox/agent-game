@@ -13,16 +13,20 @@ import java.util.UUID;
 @Entity
 @Table(name = "agents")
 @Getter
+@Setter(AccessLevel.PROTECTED)
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@ToString
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
 public class Agent {
+
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
+    @EqualsAndHashCode.Include
     private UUID id;
 
-    @Setter
     private String name;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -31,12 +35,9 @@ public class Agent {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "location_id")
-    @Setter
     private Location currentLocation;
 
-    @Setter
     private Integer x;
-    @Setter
     private Integer y;
 
     private Integer strength;

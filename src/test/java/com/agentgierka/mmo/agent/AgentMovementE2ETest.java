@@ -9,6 +9,7 @@ import com.agentgierka.mmo.engine.GameEngine;
 import com.agentgierka.mmo.player.Player;
 import com.agentgierka.mmo.player.PlayerRepository;
 import com.agentgierka.mmo.agent.web.AgentController;
+import com.agentgierka.mmo.ai.port.Brain;
 import com.agentgierka.mmo.world.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -61,9 +62,19 @@ class AgentMovementE2ETest {
     @MockitoBean
     private AgentWorldStateRepository agentWorldStateRepository;
 
+    @MockitoBean
+    private Brain brain;
+
     @BeforeEach
     void setup() {
         mockMvc = MockMvcBuilders.standaloneSetup(agentController).build();
+
+        transactionTemplate.executeWithoutResult(s -> {
+            portalRepository.deleteAll();
+            agentRepository.deleteAll();
+            playerRepository.deleteAll();
+            locationRepository.deleteAll();
+        });
     }
 
     @Test
@@ -99,9 +110,14 @@ class AgentMovementE2ETest {
         verify(agentWorldStateRepository, atLeastOnce()).saveAll(anyList());
         
         // 4. PROCESS: Tick 2 (Move to 2, 2 -> Trigger Portal)
-        // Update mock to reflect current state before next tick
-        initialState.setX(1); initialState.setY(1);
+        // Update mock to reflect current state before next tick using builder for immutability
+        initialState = initialState.toBuilder().x(1).y(1).build();
+        when(agentWorldStateRepository.findAllActive()).thenReturn(List.of(initialState));
+        
         gameEngine.tick();
+
+        // Give a moment for asynchronous portal processing (Virtual Threads) to commit in DB
+        Thread.sleep(100);
 
         // 5. VERIFY: Final State in Postgres
         transactionTemplate.executeWithoutResult(s -> {
