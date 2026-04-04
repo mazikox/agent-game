@@ -31,6 +31,6 @@ public class AuthController {
 
     @ExceptionHandler(AuthenticationException.class)
     public ResponseEntity<Void> handleAuthenticationException() {
-        return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
     }
 }

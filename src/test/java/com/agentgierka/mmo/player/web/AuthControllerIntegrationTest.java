@@ -92,12 +92,33 @@ class AuthControllerIntegrationTest {
     }
 
     @Test
-    @DisplayName("Should return 403 when login fails")
+    @DisplayName("Should return 401 when login fails")
     void loginFailure() throws Exception {
         LoginRequest loginRequest = new LoginRequest("nonExistent", "wrongPass");
         mockMvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(loginRequest)))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("Should return 409 when registering with existing username")
+    void duplicateRegistration() throws Exception {
+        String username = "existingPlayer";
+        String password = "securePassword123";
+
+        RegisterRequest registerRequest = new RegisterRequest(username, password);
+
+        // 1. Initial registration
+        mockMvc.perform(post("/api/v1/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(registerRequest)))
+                .andExpect(status().isOk());
+
+        // 2. Duplicate registration
+        mockMvc.perform(post("/api/v1/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(registerRequest)))
+                .andExpect(status().isConflict());
     }
 }

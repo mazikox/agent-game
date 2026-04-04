@@ -1,0 +1,31 @@
+{
+  "name": "mobile",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web"
+  },
+  "dependencies": {
+    "@expo/metro-runtime": "~4.0.1",
+    "axios": "^1.7.7",
+    "expo": "~52.0.11",
+    "expo-constants": "~17.0.3",
+    "expo-linear-gradient": "~14.0.1",
+    "expo-status-bar": "~2.0.1",
+    "lucide-react-native": "^0.454.0",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "react-native": "0.76.3",
+    "react-native-reanimated": "~3.16.1",
+    "react-native-svg": "^15.15.4",
+    "react-native-web": "~0.19.13"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.25.2",
+    "babel-preset-expo": "~12.0.4"
+  },
+  "private": true
+}

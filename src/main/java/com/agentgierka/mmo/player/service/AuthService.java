@@ -11,6 +11,7 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.agentgierka.mmo.player.exception.PlayerAlreadyExistsException;
 
 @Service
 @RequiredArgsConstructor
@@ -25,7 +26,7 @@ public class AuthService {
     @Transactional
     public void register(String username, String rawPassword) {
         if (playerRepository.findByUsername(username).isPresent()) {
-            throw new RuntimeException("Username already exists");
+            throw new PlayerAlreadyExistsException(username);
         }
 
         Player player = Player.create(username, passwordEncoder.encode(rawPassword));

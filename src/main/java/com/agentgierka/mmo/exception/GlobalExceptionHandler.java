@@ -38,6 +38,12 @@ public class GlobalExceptionHandler {
         return buildResponse(ex.getErrorCode(), ex.getMessage(), HttpStatus.BAD_REQUEST);
     }
 
+    @ExceptionHandler(com.agentgierka.mmo.player.exception.PlayerAlreadyExistsException.class)
+    public ResponseEntity<ErrorResponse> handlePlayerAlreadyExists(com.agentgierka.mmo.player.exception.PlayerAlreadyExistsException ex) {
+        log.warn("Player already exists: {}", ex.getMessage());
+        return buildResponse(ex.getErrorCode(), ex.getMessage(), HttpStatus.CONFLICT);
+    }
+
     @ExceptionHandler(GameBaseException.class)
     public ResponseEntity<ErrorResponse> handleGenericGameException(GameBaseException ex) {
         log.error("Internal game error [{}]: {}", ex.getErrorCode(), ex.getMessage());
