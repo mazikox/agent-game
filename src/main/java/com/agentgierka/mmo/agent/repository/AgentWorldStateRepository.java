@@ -72,7 +72,12 @@ public class AgentWorldStateRepository {
                 .map(id -> KEY_PREFIX + id)
                 .collect(Collectors.toList());
 
-        return agentWorldStateTemplate.opsForValue().multiGet(keys).stream()
+        List<AgentWorldState> results = agentWorldStateTemplate.opsForValue().multiGet(keys);
+        if (results == null) {
+            return Collections.emptyList();
+        }
+
+        return results.stream()
                 .filter(state -> state != null && state.getStatus() == AgentStatus.MOVING)
                 .collect(Collectors.toList());
     }

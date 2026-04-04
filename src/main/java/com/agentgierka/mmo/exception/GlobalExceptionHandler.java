@@ -2,6 +2,7 @@ package com.agentgierka.mmo.exception;
 
 import com.agentgierka.mmo.agent.exception.AgentNotFoundException;
 import com.agentgierka.mmo.agent.exception.InvalidMovementException;
+import com.agentgierka.mmo.world.exception.LocationNotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -23,6 +24,13 @@ public class GlobalExceptionHandler {
         log.warn("Agent not found: {}", ex.getMessage());
         return buildResponse(ex.getErrorCode(), ex.getMessage(), HttpStatus.NOT_FOUND);
     }
+
+    @ExceptionHandler(LocationNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleLocationNotFound(LocationNotFoundException ex) {
+        log.warn("Location not found: {}", ex.getMessage());
+        return buildResponse(ex.getErrorCode(), ex.getMessage(), HttpStatus.NOT_FOUND);
+    }
+
 
     @ExceptionHandler(InvalidMovementException.class)
     public ResponseEntity<ErrorResponse> handleInvalidMovement(InvalidMovementException ex) {

@@ -71,4 +71,18 @@ class AgentWorldStateTest {
         state.updatePosition();
         assertTrue(state.isAtTarget());
     }
+
+    @Test
+    @DisplayName("Should handle null targets gracefully without NPE")
+    void shouldHandleNullTargetsGracefully() {
+        // Given
+        AgentWorldState state = AgentWorldState.builder()
+                .x(10).y(10)
+                .targetX(null).targetY(null)
+                .build();
+
+        // When/Then
+        assertDoesNotThrow(state::updatePosition);
+        assertTrue(state.updatePosition());
+    }
 }

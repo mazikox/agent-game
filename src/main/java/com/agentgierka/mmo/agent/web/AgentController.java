@@ -5,6 +5,7 @@ import com.agentgierka.mmo.agent.service.AgentService;
 import com.agentgierka.mmo.agent.web.dto.AgentDto;
 import com.agentgierka.mmo.agent.web.mapper.AgentMapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -17,6 +18,7 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/agents")
 @RequiredArgsConstructor
+@Slf4j
 public class AgentController {
 
     private final AgentService agentService;
@@ -53,6 +55,7 @@ public class AgentController {
      */
     @PostMapping("/{id}/goal")
     public AgentDto assignGoal(@PathVariable UUID id, @RequestParam String goal) {
+        log.info("--- Incoming Goal Request for Agent {}: '{}' ---", id, goal);
         agentService.assignGoal(id, goal);
         return agentMapper.toDto(agentService.findById(id));
     }

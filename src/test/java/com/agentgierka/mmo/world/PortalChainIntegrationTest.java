@@ -9,6 +9,7 @@ import com.agentgierka.mmo.agent.service.AgentPersistenceService;
 import com.agentgierka.mmo.agent.service.AgentService;
 import com.agentgierka.mmo.player.Player;
 import com.agentgierka.mmo.player.PlayerRepository;
+import com.agentgierka.mmo.ai.port.Brain;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,6 +32,9 @@ class PortalChainIntegrationTest {
 
     @MockitoBean
     private AgentWorldStateRepository agentWorldStateRepository;
+
+    @MockitoBean
+    private Brain brain;
 
     @Autowired
     private AgentRepository agentRepository;
@@ -123,7 +127,7 @@ class PortalChainIntegrationTest {
     }
 
     private Agent saveAgent(String name, Location loc, int x, int y) {
-        Player player = transactionTemplate.execute(s -> playerRepository.save(Player.builder().username(name + "Player").build()));
+        Player player = transactionTemplate.execute(s -> playerRepository.save(Player.create(name + "Player", "secret")));
         return transactionTemplate.execute(s -> agentRepository.save(Agent.builder().name(name).owner(player).currentLocation(loc).x(x).y(y).status(AgentStatus.MOVING).build()));
     }
 }

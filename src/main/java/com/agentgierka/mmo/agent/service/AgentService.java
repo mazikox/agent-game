@@ -1,6 +1,6 @@
 package com.agentgierka.mmo.agent.service;
 
-import com.agentgierka.mmo.agent.event.AgentArrivedEvent;
+import com.agentgierka.mmo.agent.event.GoalAssignedEvent;
 import com.agentgierka.mmo.agent.exception.AgentNotFoundException;
 import com.agentgierka.mmo.agent.exception.InvalidMovementException;
 import com.agentgierka.mmo.agent.model.Agent;
@@ -9,12 +9,11 @@ import com.agentgierka.mmo.agent.model.AgentWorldState;
 import com.agentgierka.mmo.agent.model.MovementType;
 import com.agentgierka.mmo.agent.repository.AgentRepository;
 import com.agentgierka.mmo.agent.repository.AgentWorldStateRepository;
+import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.UUID;
 import java.util.List;
@@ -25,8 +24,9 @@ public class AgentService {
 
     private final AgentRepository agentRepository;
     private final AgentWorldStateRepository agentWorldStateRepository;
+    private final WorldStateSynchronizer worldStateSynchronizer;
     private final ApplicationEventPublisher eventPublisher;
-    private final com.agentgierka.mmo.ai.service.AgentThinkingService agentThinkingService;
+    private final EntityManager entityManager;
 
     public List<Agent> findAll() {
         return agentRepository.findAll();
@@ -39,14 +39,16 @@ public class AgentService {
 
         agent.assignGoal(goal);
         agentRepository.save(agent);
-        
-        agentThinkingService.processThinking(agentId);
+
+        eventPublisher.publishEvent(new GoalAssignedEvent(agentId));
     }
 
     @Transactional(readOnly = true)
     public Agent findById(UUID id) {
         Agent agent = agentRepository.findById(id)
                 .orElseThrow(() -> new AgentNotFoundException(id.toString()));
+
+        entityManager.detach(agent);
 
         AgentWorldState worldState = agentWorldStateRepository.findById(id);
         if (worldState != null) {
@@ -68,24 +70,7 @@ public class AgentService {
         agent.startMovement(targetX, targetY, "Preparing to move to (" + targetX + ", " + targetY + ")");
         Agent savedAgent = agentRepository.save(agent);
 
-        // Synchronize with Redis only after the database transaction is committed to ensure consistency.
-        if (TransactionSynchronizationManager.isSynchronizationActive()) {
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override
-                public void afterCommit() {
-                    AgentWorldState worldState = AgentWorldState.builder()
-                            .agentId(agentId)
-                            .x(agent.getX())
-                            .y(agent.getY())
-                            .targetX(targetX)
-                            .targetY(targetY)
-                            .status(AgentStatus.MOVING)
-                            .speed(agent.getSpeed())
-                            .build();
-                    agentWorldStateRepository.save(worldState);
-                }
-            });
-        }
+        worldStateSynchronizer.syncMovementAfterCommit(agent);
 
         return savedAgent;
     }
@@ -106,22 +91,8 @@ public class AgentService {
 
         Agent savedAgent = agentRepository.save(agent);
 
-        if (TransactionSynchronizationManager.isSynchronizationActive()) {
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override
-                public void afterCommit() {
-                    agentWorldStateRepository.delete(agentId);
+        worldStateSynchronizer.clearStateAndPublishArrival(agentId, location, x, y, MovementType.TELEPORT);
 
-                    eventPublisher.publishEvent(new AgentArrivedEvent(
-                            agentId,
-                            location,
-                            x,
-                            y,
-                            MovementType.TELEPORT
-                    ));
-                }
-            });
-        }
         return savedAgent;
     }
 

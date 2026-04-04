@@ -14,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
@@ -29,11 +30,19 @@ public class DataInitializer implements CommandLineRunner {
     private final AgentRepository agentRepository;
     private final LocationRepository locationRepository;
     private final PortalRepository portalRepository;
+    private final PasswordEncoder passwordEncoder;
 
     @Override
     @Transactional
     public void run(String... args) {
+        if (locationRepository.count() > 0) {
+            log.info("Game data already initialized. Skipping...");
+            return;
+        }
+
         log.info("Initializing game data...");
+
+        // TODO: Use Flyway for future database schema and data migrations
 
         // 1. Create a default Location
         Location forest = Location.builder()
@@ -49,7 +58,7 @@ public class DataInitializer implements CommandLineRunner {
         Location meadow = Location.builder()
                 .name("Azure Meadow")
                 .description("A peaceful meadow filled with blue flowers and butterflies.")
-                .type(LocationType.FOREST) // Or another type if available
+                .type(LocationType.FOREST)
                 .width(50)
                 .height(50)
                 .build();
@@ -67,11 +76,7 @@ public class DataInitializer implements CommandLineRunner {
         portalRepository.save(forestToMeadow);
 
         // 4. Create a default Master Player
-        Player master = Player.builder()
-                .username("MasterAdmin")
-                .gold(1000L)
-                .charisma(10)
-                .build();
+        Player master = Player.create("MasterAdmin", passwordEncoder.encode("admin123"));
         playerRepository.save(master);
 
         // 3. Create a starting Agent

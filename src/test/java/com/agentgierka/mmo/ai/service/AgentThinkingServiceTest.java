@@ -3,7 +3,7 @@ package com.agentgierka.mmo.ai.service;
 import com.agentgierka.mmo.agent.model.Agent;
 import com.agentgierka.mmo.agent.model.AgentStatus;
 import com.agentgierka.mmo.agent.repository.AgentRepository;
-import com.agentgierka.mmo.agent.repository.AgentWorldStateRepository;
+import com.agentgierka.mmo.agent.service.WorldStateSynchronizer;
 import com.agentgierka.mmo.ai.model.Perception;
 import com.agentgierka.mmo.ai.model.Thought;
 import com.agentgierka.mmo.ai.port.Brain;
@@ -11,12 +11,9 @@ import com.agentgierka.mmo.world.PortalRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.List;
 import java.util.Optional;
@@ -36,7 +33,7 @@ class AgentThinkingServiceTest {
     private PortalRepository portalRepository;
 
     @Mock
-    private AgentWorldStateRepository agentWorldStateRepository;
+    private WorldStateSynchronizer worldStateSynchronizer;
 
     @Mock
     private Brain brain;
@@ -52,6 +49,7 @@ class AgentThinkingServiceTest {
         Agent agent = Agent.builder()
                 .id(agentId)
                 .name("Thinker")
+                .currentLocation(com.agentgierka.mmo.world.Location.builder().name("Test Location").build())
                 .status(AgentStatus.IDLE)
                 .build();
 
@@ -62,28 +60,16 @@ class AgentThinkingServiceTest {
                 .build();
 
         when(agentRepository.findById(agentId)).thenReturn(Optional.of(agent));
-        when(portalRepository.findAllBySourceLocation(any())).thenReturn(List.of());
+        when(portalRepository.findAllBySourceLocationId(any())).thenReturn(List.of());
         when(brain.think(any(Perception.class))).thenReturn(thought);
 
-        try (var mockedSync = mockStatic(TransactionSynchronizationManager.class)) {
-            mockedSync.when(TransactionSynchronizationManager::isSynchronizationActive).thenReturn(true);
+        // When
+        agentThinkingService.processThinking(agentId);
 
-            // When
-            agentThinkingService.processThinking(agentId);
-
-            // Then
-            verify(agentRepository).save(argThat(a -> 
-                a.getStatus() == AgentStatus.MOVING && a.getTargetX() == 100
-            ));
-
-            // Verify Redis Sync
-            var captor = ArgumentCaptor.forClass(TransactionSynchronization.class);
-            mockedSync.verify(() -> TransactionSynchronizationManager.registerSynchronization(captor.capture()));
-            captor.getValue().afterCommit();
-
-            verify(agentWorldStateRepository).save(argThat(ws -> 
-                ws.getAgentId().equals(agentId) && ws.getTargetX() == 100
-            ));
-        }
+        // Then
+        verify(agentRepository).save(argThat(a -> 
+            a.getStatus() == AgentStatus.MOVING && a.getTargetX() == 100
+        ));
+        verify(worldStateSynchronizer).syncMovementAfterCommit(agent);
     }
 }

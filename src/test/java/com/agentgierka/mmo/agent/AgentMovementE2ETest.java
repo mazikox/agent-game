@@ -143,7 +143,7 @@ class AgentMovementE2ETest {
 
     private Agent saveAgent(String name, Location loc, int x, int y, int speed) {
         Player player = transactionTemplate.execute(s -> playerRepository.save(
-            Player.builder().username(name + "Player").build()
+            Player.create(name + "Player", "secret")
         ));
         return transactionTemplate.execute(s -> agentRepository.save(
             Agent.builder().name(name).owner(player).currentLocation(loc).x(x).y(y).speed(speed).status(AgentStatus.IDLE).build()

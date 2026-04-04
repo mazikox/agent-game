@@ -50,7 +50,6 @@ public class GameEngine {
             for (AgentWorldState state : activeAgents) {
                 executor.submit(() -> {
                     if (state.updatePosition()) {
-                        agentWorldStateRepository.delete(state.getAgentId());
                         agentPersistenceService.finalizeMovement(state);
                     } else {
                         toUpdate.add(state);

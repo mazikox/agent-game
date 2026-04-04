@@ -7,6 +7,7 @@ import com.agentgierka.mmo.world.PortalRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 
@@ -15,9 +16,11 @@ import org.springframework.stereotype.Component;
  * and triggering the teleportation via AgentService.
  */
 @Component
+@Order(1)
 @RequiredArgsConstructor
 @Slf4j
 public class PortalEventListener {
+
 
     private final PortalRepository portalRepository;
     private final AgentService agentService;
@@ -33,13 +36,13 @@ public class PortalEventListener {
             return;
         }
 
-        log.debug("Checking for portals at destination for agent {}", event.agentId());
+        log.info("Checking for portals for agent {} at {} ({}, {})", event.agentId(), event.location().getName(), event.x(), event.y());
 
-        // Check the database for any portal at these coordinates
-        portalRepository.findBySourceLocationAndSourceXAndSourceY(event.location(), event.x(), event.y())
-                .ifPresent(portal -> {
-                    log.info("Portal found! Triggering teleportation for agent {} from {} to {}", 
-                             event.agentId(), portal.getSourceLocation().getName(), portal.getTargetLocation().getName());
+        // Check the database for any portal at these coordinates using Location ID for robustness
+        portalRepository.findBySourceLocationIdAndSourceXAndSourceY(event.location().getId(), event.x(), event.y())
+                .ifPresentOrElse(portal -> {
+                    log.info("Portal found! Triggering teleportation for agent {} to {}", 
+                             event.agentId(), portal.getTargetLocation().getName());
                     
                     agentService.teleportTo(
                             event.agentId(),
@@ -47,7 +50,8 @@ public class PortalEventListener {
                             portal.getTargetX(),
                             portal.getTargetY()
                     );
-                });
+                }, () -> log.debug("No portal found for agent {} at ({}, {})", event.agentId(), event.x(), event.y()));
+
     }
 }
 

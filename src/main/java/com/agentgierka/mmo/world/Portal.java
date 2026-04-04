@@ -10,7 +10,7 @@ import java.util.UUID;
 @Entity
 @Table(name = "portals")
 @Getter
-@Setter
+@ToString
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder

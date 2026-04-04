@@ -6,15 +6,15 @@ import com.agentgierka.mmo.agent.model.AgentWorldState;
 import com.agentgierka.mmo.agent.repository.AgentRepository;
 import com.agentgierka.mmo.agent.repository.AgentWorldStateRepository;
 import com.agentgierka.mmo.world.Location;
+import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.context.ApplicationEventPublisher;
+import com.agentgierka.mmo.agent.event.GoalAssignedEvent;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -35,14 +35,20 @@ class AgentServiceTest {
     private AgentWorldStateRepository agentWorldStateRepository;
 
     @Mock
-    private com.agentgierka.mmo.ai.service.AgentThinkingService agentThinkingService;
+    private WorldStateSynchronizer worldStateSynchronizer;
+
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
+
+    @Mock
+    private EntityManager entityManager;
 
     @InjectMocks
     private AgentService agentService;
 
     @Test
-    @DisplayName("Should assign goal and trigger thinking")
-    void shouldAssignGoalAndTriggerThinking() {
+    @DisplayName("Should assign goal and publish event")
+    void shouldAssignGoalAndPublishEvent() {
         // Given
         UUID agentId = UUID.randomUUID();
         Agent agent = Agent.builder().id(agentId).name("Commander").build();
@@ -56,7 +62,7 @@ class AgentServiceTest {
 
         // Then
         verify(agentRepository).save(argThat(a -> goal.equals(a.getGoal())));
-        verify(agentThinkingService).processThinking(agentId);
+        verify(eventPublisher).publishEvent(any(GoalAssignedEvent.class));
     }
 
     @Test
@@ -131,8 +137,8 @@ class AgentServiceTest {
     }
 
     @Test
-    @DisplayName("Should update both repositories when movement starts")
-    void shouldUpdateBothRepositoriesWhenMovementStarts() {
+    @DisplayName("Should update Postgres and trigger Redis sync when movement starts")
+    void shouldUpdatePostgresAndTriggerRedisSyncWhenMovementStarts() {
         // Given
         UUID agentId = UUID.randomUUID();
         Location forest = Location.builder().width(100).height(100).build();
@@ -143,29 +149,17 @@ class AgentServiceTest {
                 .speed(5)
                 .build();
 
-        try (var mockedSync = mockStatic(TransactionSynchronizationManager.class)) {
-            mockedSync.when(TransactionSynchronizationManager::isSynchronizationActive).thenReturn(true);
-            
-            when(agentRepository.findById(agentId)).thenReturn(Optional.of(agent));
-            when(agentRepository.save(any(Agent.class))).thenReturn(agent);
+        when(agentRepository.findById(agentId)).thenReturn(Optional.of(agent));
+        when(agentRepository.save(any(Agent.class))).thenReturn(agent);
 
-            // When
-            agentService.moveTo(agentId, 60, 60);
+        // When
+        agentService.moveTo(agentId, 60, 60);
 
-            // Then
-            verify(agentRepository).save(argThat(a -> 
-                a.getStatus() == AgentStatus.MOVING && a.getTargetX() == 60
-            ));
-
-            // Capture and execute the synchronization logic
-            var captor = ArgumentCaptor.forClass(TransactionSynchronization.class);
-            mockedSync.verify(() -> TransactionSynchronizationManager.registerSynchronization(captor.capture()));
-            captor.getValue().afterCommit();
-
-            verify(agentWorldStateRepository).save(argThat(ws -> 
-                ws.getAgentId().equals(agentId) && ws.getTargetX() == 60
-            ));
-        }
+        // Then
+        verify(agentRepository).save(argThat(a -> 
+            a.getStatus() == AgentStatus.MOVING && a.getTargetX() == 60
+        ));
+        verify(worldStateSynchronizer).syncMovementAfterCommit(agent);
     }
 
     @Test

@@ -8,13 +8,13 @@ import java.util.UUID;
 
 /**
  * Data Transfer Object for Agent information in the REST API.
- * Decouples the API from JPA entities and prevents lazy loading issues.
  */
 @Data
 @Builder
 public class AgentDto {
     private UUID id;
     private String name;
+    private UUID currentLocationId; // Spójność z nazwą pola currentLocation w encji Agent
     private Integer x;
     private Integer y;
     private Integer targetX;

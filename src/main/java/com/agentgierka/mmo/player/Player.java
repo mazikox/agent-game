@@ -10,10 +10,10 @@ import java.util.UUID;
 @Entity
 @Table(name = "players")
 @Getter
-@Setter
+@ToString
 @NoArgsConstructor
-@AllArgsConstructor
-@Builder
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
+@Builder(access = AccessLevel.PRIVATE)
 public class Player {
 
     @Id
@@ -23,10 +23,23 @@ public class Player {
     @Column(unique = true, nullable = false)
     private String username;
 
+    @Column(nullable = false)
+    @ToString.Exclude
+    private String password;
+
     private Long gold;
 
     /** 
      * Master's charisma affects agent performance and loyalty bonuses.
      */
-    private Integer charisma; 
+    private Integer charisma;
+
+    public static Player create(String username, String encodedPassword) {
+        return Player.builder()
+                .username(username)
+                .password(encodedPassword)
+                .gold(100L)
+                .charisma(10)
+                .build();
+    }
 }

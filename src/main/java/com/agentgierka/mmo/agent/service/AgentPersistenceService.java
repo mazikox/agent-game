@@ -1,5 +1,6 @@
 package com.agentgierka.mmo.agent.service;
 
+import com.agentgierka.mmo.agent.exception.AgentNotFoundException;
 import com.agentgierka.mmo.agent.event.AgentArrivedEvent;
 import com.agentgierka.mmo.agent.model.Agent;
 import com.agentgierka.mmo.agent.model.AgentWorldState;
@@ -24,7 +25,8 @@ public class AgentPersistenceService {
     @Transactional
     public void finalizeMovement(AgentWorldState state) {
         Agent agent = agentRepository.findById(state.getAgentId())
-                .orElseThrow(() -> new RuntimeException("Agent not found during movement finalization"));
+                .orElseThrow(() -> new AgentNotFoundException(state.getAgentId().toString()));
+
 
         agent.completeMovement(state.getX(), state.getY());
         
