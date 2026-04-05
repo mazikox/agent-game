@@ -9,5 +9,10 @@ import org.mapstruct.Mapping;
 public interface AgentMapper {
 
     @Mapping(target = "currentLocationId", source = "currentLocation.id")
+    @Mapping(target = "hp", source = "stats.hp")
+    @Mapping(target = "maxHp", source = "stats.maxHp")
+    @Mapping(target = "experience", source = "stats.experience")
+    @Mapping(target = "expThreshold", source = "stats.expThreshold")
+    @Mapping(target = "level", source = "stats.level")
     AgentDto toDto(Agent agent);
 }

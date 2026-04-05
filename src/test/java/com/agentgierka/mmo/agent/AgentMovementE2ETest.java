@@ -15,11 +15,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.List;
@@ -30,12 +30,15 @@ import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 
 @SpringBootTest
+@AutoConfigureMockMvc
 @ActiveProfiles("test")
 @DisplayName("Golden E2E Test: The Great Escape")
 class AgentMovementE2ETest {
 
+    @Autowired
     private MockMvc mockMvc;
 
     @Autowired
@@ -67,7 +70,6 @@ class AgentMovementE2ETest {
 
     @BeforeEach
     void setup() {
-        mockMvc = MockMvcBuilders.standaloneSetup(agentController).build();
 
         transactionTemplate.executeWithoutResult(s -> {
             portalRepository.deleteAll();
@@ -99,6 +101,7 @@ class AgentMovementE2ETest {
 
         // 2. ACT: Trigger Movement via API
         mockMvc.perform(post("/api/agents/" + agentId + "/move")
+                .with(user("ExplorerPlayer"))
                 .param("x", "2")
                 .param("y", "2"))
                 .andExpect(status().isOk());

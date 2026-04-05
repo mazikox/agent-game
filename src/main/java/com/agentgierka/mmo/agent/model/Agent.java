@@ -21,7 +21,6 @@ import java.util.UUID;
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 public class Agent {
 
-
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     @EqualsAndHashCode.Include
@@ -42,6 +41,10 @@ public class Agent {
 
     private Integer strength;
     private Integer dexterity;
+
+    @Embedded
+    @Builder.Default
+    private AgentStats stats = AgentStats.createInitial();
 
     private Integer targetX;
     private Integer targetY;
@@ -140,10 +143,34 @@ public class Agent {
             }
         }
 
-        // Domain rule: If coordinates were changed by AI, forcefully set MOVING status to engage Game Engine ticks.
-        if (this.targetX != null && this.targetY != null && 
-            (!this.targetX.equals(this.x) || !this.targetY.equals(this.y))) {
+        // Domain rule: If coordinates were changed by AI, forcefully set MOVING status
+        // to engage Game Engine ticks.
+        if (this.targetX != null && this.targetY != null &&
+                (!this.targetX.equals(this.x) || !this.targetY.equals(this.y))) {
             this.status = AgentStatus.MOVING;
+        }
+    }
+
+    // --- Rich Domain Methods for RPG ---
+
+    public void takeDamage(int amount) {
+        this.stats = this.stats.takeDamage(amount);
+        if (!this.stats.isAlive()) {
+            this.currentActionDescription = "Agent has fallen in battle.";
+            // Future: set status to DEAD or similar
+        }
+    }
+
+    public void heal(int amount) {
+        this.stats = this.stats.heal(amount);
+    }
+
+    public void gainExperience(int amount) {
+        AgentStats oldStats = this.stats;
+        this.stats = this.stats.addExperience(amount);
+        
+        if (this.stats.getLevel() > oldStats.getLevel()) {
+            this.currentActionDescription = "LEVEL UP! Reached level " + this.stats.getLevel();
         }
     }
 }

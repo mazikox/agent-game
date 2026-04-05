@@ -6,6 +6,7 @@ import com.agentgierka.mmo.agent.web.dto.AgentDto;
 import com.agentgierka.mmo.agent.web.mapper.AgentMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -46,25 +47,25 @@ public class AgentController {
      * Requests the agent to move to a specific location.
      */
     @PostMapping("/{id}/move")
-    public AgentDto move(@PathVariable UUID id, @RequestParam Integer x, @RequestParam Integer y) {
+    @PreAuthorize("@agentSecurity.isOwner(#id)")
+    public AgentDto move(@PathVariable("id") UUID id, @RequestParam("x") Integer x, @RequestParam("y") Integer y) {
+        log.info("Agent {} moving to ({}, {})", id, x, y);
         return agentMapper.toDto(agentService.moveTo(id, x, y));
     }
 
-    /**
-     * Assigns a high-level goal to the agent, triggering the AI thought process.
-     */
     @PostMapping("/{id}/goal")
-    public AgentDto assignGoal(@PathVariable UUID id, @RequestParam String goal) {
-        log.info("--- Incoming Goal Request for Agent {}: '{}' ---", id, goal);
+    @PreAuthorize("@agentSecurity.isOwner(#id)")
+    public AgentDto assignGoal(@PathVariable("id") UUID id, @RequestBody String goal) {
+        log.info("Assigning goal to agent {}: {}", id, goal);
         agentService.assignGoal(id, goal);
         return agentMapper.toDto(agentService.findById(id));
     }
 
-    /**
-     * Manually updates the agent's operational status.
-     */
-    @PatchMapping("/{id}/status")
-    public AgentDto updateStatus(@PathVariable UUID id, @RequestParam AgentStatus status, @RequestParam String description) {
-        return agentMapper.toDto(agentService.updateStatus(id, status, description));
+    @PostMapping("/{id}/status")
+    @PreAuthorize("@agentSecurity.isOwner(#id)")
+    public AgentDto updateStatus(@PathVariable("id") UUID id, @RequestParam("status") String status, @RequestParam("description") String description) {
+        log.info("Updating agent {} status to {}: {}", id, status, description);
+        AgentStatus agentStatus = AgentStatus.valueOf(status.toUpperCase());
+        return agentMapper.toDto(agentService.updateStatus(id, agentStatus, description));
     }
 }

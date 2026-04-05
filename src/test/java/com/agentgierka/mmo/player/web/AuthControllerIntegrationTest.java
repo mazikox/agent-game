@@ -83,7 +83,7 @@ class AuthControllerIntegrationTest {
 
         // 3. Unauthorized access check (EXPECT 403)
         mockMvc.perform(get("/api/agents"))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized());
 
         // 4. Authorized access check (EXPECT 200)
         mockMvc.perform(get("/api/agents")

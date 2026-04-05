@@ -70,4 +70,48 @@ class AgentDomainTest {
         assertNull(agent.getTargetX());
         assertTrue(agent.getCurrentActionDescription().contains("(50, 60)"));
     }
+
+    @Test
+    @DisplayName("Should take damage and update current action description on death")
+    void shouldTakeDamageCorrectly() {
+        Agent agent = Agent.builder().name("Shadow")
+                .stats(AgentStats.createInitial())
+                .build();
+
+        agent.takeDamage(30);
+        assertEquals(70, agent.getStats().getHp());
+
+        agent.takeDamage(80);
+        assertEquals(0, agent.getStats().getHp());
+        assertTrue(agent.getCurrentActionDescription().contains("fallen in battle"));
+    }
+
+    @Test
+    @DisplayName("Should gain experience and level up automatically")
+    void shouldGainExperienceAndLevelUp() {
+        Agent agent = Agent.builder().name("Hero")
+                .stats(AgentStats.builder().hp(100).maxHp(100).level(1).experience(50).build())
+                .build();
+
+        // Poziom 1 próg to 100 EXP. 50 + 60 = 110. Powinien być awans.
+        agent.gainExperience(60);
+
+        assertEquals(2, agent.getStats().getLevel());
+        assertEquals(10, agent.getStats().getExperience()); 
+        assertTrue(agent.getCurrentActionDescription().contains("LEVEL UP"));
+    }
+
+    @Test
+    @DisplayName("Should heal to max HP but not above")
+    void shouldHealCorrectly() {
+        Agent agent = Agent.builder()
+                .stats(AgentStats.builder().hp(50).maxHp(100).build())
+                .build();
+
+        agent.heal(20);
+        assertEquals(70, agent.getStats().getHp());
+
+        agent.heal(100);
+        assertEquals(100, agent.getStats().getHp());
+    }
 }

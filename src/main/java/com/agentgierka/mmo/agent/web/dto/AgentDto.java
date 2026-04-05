@@ -22,4 +22,11 @@ public class AgentDto {
     private Integer speed;
     private AgentStatus status;
     private String currentActionDescription;
+
+    // --- RPG Stats ---
+    private Integer hp;
+    private Integer maxHp;
+    private Integer experience;
+    private Integer expThreshold;
+    private Integer level;
 }

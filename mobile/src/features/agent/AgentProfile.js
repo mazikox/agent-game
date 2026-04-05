@@ -4,8 +4,9 @@ import { theme } from '../../theme/theme';
 import { StatBox } from '../../components/common/StatBox';
 import { Shield, Sword, MapPin, Compass } from 'lucide-react-native';
 
-export const AgentProfile = ({ name, level, hp, maxHp, atk, def, x, y, locationName, goal }) => {
+export const AgentProfile = ({ name, level, hp, maxHp, experience, expThreshold, atk, def, x, y, locationName, goal }) => {
   const hpProgress = (hp / maxHp) * 100;
+  const expProgress = expThreshold > 0 ? Math.floor((experience / expThreshold) * 100) : 0;
 
   return (
     <View style={styles.container}>
@@ -17,7 +18,12 @@ export const AgentProfile = ({ name, level, hp, maxHp, atk, def, x, y, locationN
           />
         </View>
         <View style={styles.info}>
-          <Text style={styles.name}>{name}</Text>
+          <View style={styles.nameRow}>
+            <Text style={styles.name}>{name}</Text>
+            <View style={styles.levelBadge}>
+              <Text style={styles.levelText}>LVL {level}</Text>
+            </View>
+          </View>
           <View style={styles.locationBadge}>
             <MapPin size={10} color={theme.colors.accent} />
             <Text style={styles.locationText}>{locationName || 'Wczytywanie...'} [ {x}, {y} ]</Text>
@@ -37,9 +43,9 @@ export const AgentProfile = ({ name, level, hp, maxHp, atk, def, x, y, locationN
       )}
 
       <View style={styles.statsRow}>
-        <StatBox label="ATK" value={atk} color={theme.colors.danger} />
-        <StatBox label="DEF" value={def} color={theme.colors.primary} />
-        <StatBox label="EXP" value="84%" color={theme.colors.success} />
+        <StatBox label="ATK" value={atk || 10} color={theme.colors.danger} />
+        <StatBox label="DEF" value={def || 5} color={theme.colors.primary} />
+        <StatBox label="EXP" value={`${expProgress}%`} color={theme.colors.success} />
       </View>
     </View>
   );
@@ -130,5 +136,22 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     gap: theme.spacing.sm,
+  },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+    marginBottom: 4,
+  },
+  levelBadge: {
+    backgroundColor: theme.colors.accent,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  levelText: {
+    color: theme.colors.background,
+    fontSize: 10,
+    fontWeight: 'bold',
   },
 });

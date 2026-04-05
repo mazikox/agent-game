@@ -88,6 +88,7 @@ public class DataInitializer implements CommandLineRunner {
                 .y(50)
                 .strength(5)
                 .dexterity(8)
+                .stats(com.agentgierka.mmo.agent.model.AgentStats.createInitial())
                 .status(AgentStatus.IDLE)
                 .currentActionDescription("Standing at the forest entrance, waiting for orders.")
                 .build();

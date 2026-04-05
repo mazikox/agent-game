@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { authService } from './authService';
 
 // The backend is running at localhost:8080. 
 // For Expo Web, we can use localhost. 
@@ -9,6 +10,20 @@ const apiClient = axios.create({
   baseURL: API_BASE_URL,
   timeout: 5000,
 });
+
+// Request interceptor for adding the bearer token
+apiClient.interceptors.request.use(
+  (config) => {
+    const token = authService.getToken();
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
 
 export const agentApi = {
   /**

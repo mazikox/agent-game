@@ -7,12 +7,18 @@ import { ActionFeed } from './src/features/feed/ActionFeed';
 import { CommandPanel } from './src/features/controls/CommandPanel';
 import { agentApi } from './src/api/agentApi';
 import { LinearGradient } from 'expo-linear-gradient';
+import { LoginScreen } from './src/features/auth/LoginScreen';
 
 export default function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [agent, setAgent] = useState(null);
   const [location, setLocation] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  const handleLoginSuccess = (token) => {
+    setIsAuthenticated(true);
+  };
 
   const fetchAgentData = useCallback(async () => {
     try {
@@ -38,10 +44,11 @@ export default function App() {
   }, [location]);
 
   useEffect(() => {
+    if (!isAuthenticated) return;
     fetchAgentData();
     const interval = setInterval(fetchAgentData, 3000);
     return () => clearInterval(interval);
-  }, [fetchAgentData]);
+  }, [fetchAgentData, isAuthenticated]);
 
   const handleCommand = async (goal) => {
     if (agent) {
@@ -49,6 +56,10 @@ export default function App() {
       fetchAgentData();
     }
   };
+
+  if (!isAuthenticated) {
+    return <LoginScreen onLoginSuccess={handleLoginSuccess} />;
+  }
 
   if (loading && !agent) {
     return (
@@ -79,11 +90,11 @@ export default function App() {
             <>
               <AgentProfile 
                 name={agent.name}
-                level={1}
-                hp={100}
-                maxHp={100}
-                atk={15}
-                def={10}
+                level={agent.level}
+                hp={agent.hp}
+                maxHp={agent.maxHp}
+                experience={agent.experience}
+                expThreshold={agent.expThreshold}
                 x={agent.x}
                 y={agent.y}
                 locationName={location ? location.name : 'Unknown'}
