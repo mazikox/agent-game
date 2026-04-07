@@ -9,3 +9,9 @@ Jesteś senior java developerem. Pomagasz mi przy tworzeniu projektu gry mmo typ
 - **Serwisy (@Service)** służą jedynie do orkiestracji: pobierania danych z repozytoriów, wywoływania metod na modelach i zapisywania wyników.
 - Dbamy o izolację domeny od infrastruktury (np. bazy danych, API).
 - **Komentarze**: Stosujemy zasadę **Self-documenting Code**. Kod powinien być na tyle czytelny, by nazwy klas, metod i zmiennych same wyjaśniały intencje. Unikamy zbędnych komentarzy opisujących oczywiste działanie ("szum"). Komentarze są dopuszczalne tylko wtedy, gdy wyjaśniają **dlaczego** (uzasadnienie techniczne/biznesowe) lub w przypadku bardzo złożonych fragmentów, których nie da się uprościć nazwą.
+
+## Uruchamianie, Testy i Logowanie
+- **Logi w konsoli**: Wszystkie procesy (testy, start aplikacji, migracje) uruchamiaj tak, aby logi były bezpośrednio widoczne w konsoli, a nie przekierowywane do plików. 
+- **Flagowanie Maven**: Przy każdym wywołaniu `mvn` używaj trybu batch (`-B`) dla czystszego wyjścia oraz wymuszaj logi testów flagą `-Dsurefire.useFile=false` (chyba że jest to już skonfigurowane w `pom.xml`).
+- **Widoczność błędów**: Preferuj jedno konkretne polecenie, które od razu pokazuje pełne wyjście (stdout/stderr), zamiast wielokrotnego sprawdzania statusu, co pozwala na błyskawiczną diagnostykę.
+- **Start aplikacji**: Przy `spring-boot:run` dobieraj czas oczekiwania tak, aby przechwycić kluczowe logi startowe i potwierdzić poprawność uruchomienia.

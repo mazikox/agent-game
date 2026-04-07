@@ -52,6 +52,8 @@ public class WorldStateSynchronizer {
                     action.run();
                 }
             });
+        } else {
+            action.run();
         }
     }
 }

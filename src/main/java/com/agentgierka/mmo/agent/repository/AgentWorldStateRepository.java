@@ -4,8 +4,11 @@ import com.agentgierka.mmo.agent.model.AgentStatus;
 import com.agentgierka.mmo.agent.model.AgentWorldState;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.script.DefaultRedisScript;
+import org.springframework.data.redis.serializer.RedisSerializer;
 import org.springframework.stereotype.Repository;
 
+import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -66,19 +69,46 @@ public class AgentWorldStateRepository {
      * Updates the agent state atomically using optimistic locking.
      * Returns true if update was successful, false if version was stale or record missing.
      */
+    private static final String ATOMIC_UPDATE_LUA =
+            "local current = redis.call('GET', KEYS[1]) " +
+            "if not current then return -1 end " +
+            "if current:find('\"version\":' .. ARGV[1], 1, true) then " +
+            "  redis.call('SET', KEYS[1], ARGV[2]) " +
+            "  if ARGV[3] == 'MOVING' then " +
+            "    redis.call('SADD', KEYS[2], ARGV[4]) " +
+            "  else " +
+            "    redis.call('SREM', KEYS[2], ARGV[4]) " +
+            "  end " +
+            "  return 1 " +
+            "end " +
+            "return 0";
+
     public boolean updateAtomic(AgentWorldState newState) {
-        AgentWorldState existing = findById(newState.getAgentId());
-        if (existing == null) {
-            return false;
-        }
-
-        if (existing.getVersion() != newState.getVersion()) {
-            return false;
-        }
-
+        long expectedVersion = newState.getVersion();
         newState.incrementVersion();
-        save(newState);
-        return true;
+
+        DefaultRedisScript<Long> script = new DefaultRedisScript<>(ATOMIC_UPDATE_LUA, Long.class);
+
+        Long result = mmoStringRedisTemplate.execute(
+                script,
+                List.of(KEY_PREFIX + newState.getAgentId(), ACTIVE_AGENTS_SET),
+                String.valueOf(expectedVersion),
+                serializeToJson(newState),
+                newState.getStatus().name(),
+                newState.getAgentId().toString()
+        );
+
+        return result != null && result == 1L;
+    }
+
+    @SuppressWarnings("unchecked")
+    private String serializeToJson(AgentWorldState state) {
+        RedisSerializer<Object> serializer = (RedisSerializer<Object>) agentWorldStateTemplate.getValueSerializer();
+        byte[] serialized = serializer.serialize(state);
+        if (serialized == null) {
+            throw new IllegalStateException("Failed to serialize AgentWorldState");
+        }
+        return new String(serialized, StandardCharsets.UTF_8);
     }
 
     public List<AgentWorldState> findAllActive() {
