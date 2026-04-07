@@ -7,6 +7,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import com.agentgierka.mmo.ai.port.Brain;
+import com.agentgierka.mmo.agent.repository.AgentWorldStateRepository;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
@@ -19,6 +20,9 @@ public class GoalAssignedListenerLoadTest {
 
     @MockitoBean
     private Brain brain;
+
+    @MockitoBean
+    private AgentWorldStateRepository agentWorldStateRepository;
 
     @Test
     void contextLoads() {

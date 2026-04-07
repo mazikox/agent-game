@@ -22,11 +22,14 @@ public class AiGoalExecutionListener {
     @EventListener
     public void onAgentArrived(AgentArrivedEvent event) {
         agentRepository.findById(event.agentId()).ifPresent(agent -> {
-            if (agent.hasActiveGoal()) {
-                log.info("Agent {} arrived at {}, but still has a goal: '{}'. Triggering next thought process.", 
-                         agent.getName(), event.location().getName(), agent.getGoal());
-                
-                agentThinkingService.processThinking(agent.getId());
+            if (agent.getRemainingThinkingSteps() != null && agent.getRemainingThinkingSteps() <= 0) {
+                log.info("MISSION COMPLETE: Agent {} reached destination at {}. Standing by for new commands.", 
+                         agent.getName(), event.location().getName());
+            } else if (agent.hasActiveGoal()) {
+                // If we ever want to re-enable autonomy, we would call processThinking here.
+                // For now, in manual mode, we just log that we are pausing.
+                log.info("Agent {} reached waypoint at {}, but manual mode is active. Pausing.", 
+                         agent.getName(), event.location().getName());
             }
         });
     }

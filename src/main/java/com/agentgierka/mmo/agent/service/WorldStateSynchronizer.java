@@ -25,6 +25,7 @@ public class WorldStateSynchronizer {
         executeAfterCommit(() -> {
             AgentWorldState worldState = AgentWorldState.builder()
                     .agentId(agent.getId())
+                    .agentName(agent.getName())
                     .x(agent.getX())
                     .y(agent.getY())
                     .targetX(agent.getTargetX())

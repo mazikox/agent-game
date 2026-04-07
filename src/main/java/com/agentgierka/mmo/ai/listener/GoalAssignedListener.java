@@ -21,11 +21,13 @@ import org.springframework.transaction.event.TransactionalEventListener;
 public class GoalAssignedListener {
 
     private final AgentThinkingService agentThinkingService;
+    private final com.agentgierka.mmo.agent.service.AgentService agentService;
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void onGoalAssigned(GoalAssignedEvent event) {
-        log.info("Goal assigned event received for agent {}. Starting AI thinking...", event.agentId());
+        var agent = agentService.findById(event.agentId());
+        log.info("Goal assigned event received for agent {}. Starting AI thinking...", agent.getName());
         agentThinkingService.processThinking(event.agentId());
     }
 }

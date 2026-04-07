@@ -1,157 +1,215 @@
 import React from 'react';
 import { View, Text, Image, StyleSheet } from 'react-native';
 import { theme } from '../../theme/theme';
-import { StatBox } from '../../components/common/StatBox';
-import { Shield, Sword, MapPin, Compass } from 'lucide-react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 
-export const AgentProfile = ({ name, level, hp, maxHp, experience, expThreshold, atk, def, x, y, locationName, goal }) => {
-  const hpProgress = (hp / maxHp) * 100;
-  const expProgress = expThreshold > 0 ? Math.floor((experience / expThreshold) * 100) : 0;
-
+export const AgentProfile = ({ 
+  name = "Shadow-01", 
+  level = 1, 
+  hp = 100, 
+  maxHp = 100, 
+  stamina = 100, 
+  maxStamina = 100,
+  currentAction = "Waiting for orders...",
+  status = "IDLE",
+  x = 0,
+  y = 0,
+  mapWidth = 0,
+  mapHeight = 0,
+  currentTask = ""
+}) => {
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <View style={styles.avatarBorder}>
-          <Image 
-            source={require('../../../assets/knight_avatar.png')} 
-            style={styles.avatar}
-          />
-        </View>
-        <View style={styles.info}>
-          <View style={styles.nameRow}>
-            <Text style={styles.name}>{name}</Text>
-            <View style={styles.levelBadge}>
-              <Text style={styles.levelText}>LVL {level}</Text>
-            </View>
-          </View>
-          <View style={styles.locationBadge}>
-            <MapPin size={10} color={theme.colors.accent} />
-            <Text style={styles.locationText}>{locationName || 'Wczytywanie...'} [ {x}, {y} ]</Text>
-          </View>
-          <View style={styles.hpBarContainer}>
-            <View style={[styles.hpBar, { width: `${hpProgress}%` }]} />
-            <Text style={styles.hpText}>{hp} / {maxHp}</Text>
-          </View>
-        </View>
-      </View>
       
-      {goal && (
-        <View style={styles.goalContainer}>
-          <Compass size={12} color={theme.colors.primary} />
-          <Text style={styles.goalText} numberOfLines={1}>CEL: {goal}</Text>
-        </View>
-      )}
-
-      <View style={styles.statsRow}>
-        <StatBox label="ATK" value={atk || 10} color={theme.colors.danger} />
-        <StatBox label="DEF" value={def || 5} color={theme.colors.primary} />
-        <StatBox label="EXP" value={`${expProgress}%`} color={theme.colors.success} />
+      {/* AVATAR CIRCLE - Overlapping */}
+      <View style={styles.avatarWrapper}>
+        <LinearGradient
+          colors={[theme.colors.border.cyan, theme.colors.border.gold]}
+          start={{x: 0, y: 0}}
+          end={{x: 1, y: 1}}
+          style={styles.avatarGlow}
+        >
+          <View style={styles.avatarInner}>
+            <Image 
+              source={require('../../../assets/knight_avatar.png')} 
+              style={styles.avatar}
+            />
+          </View>
+        </LinearGradient>
       </View>
+
+      {/* STATS PANEL - To the right */}
+      <View style={styles.statsPanel}>
+        <View style={styles.headerRow}>
+          <View>
+            <Text style={styles.name}>{name}</Text>
+            <Text style={styles.level}>Lv. {level} • {x},{y} ({mapWidth}x{mapHeight})</Text>
+          </View>
+          <View style={[styles.statusBadge, { backgroundColor: status === 'MOVING' ? '#4CAF50' : '#FFC107' }]}>
+            <Text style={styles.statusText}>{status}</Text>
+          </View>
+        </View>
+
+        {/* HP BAR */}
+        <View style={styles.barRow}>
+          <Text style={styles.barLabel}>HP</Text>
+          <View style={styles.barContainer}>
+            <LinearGradient
+              colors={theme.gradients.hp}
+              start={{x: 0, y: 0}}
+              end={{x: 1, y: 0}}
+              style={[styles.barFill, { width: `${(hp/maxHp) * 100}%` }]}
+            />
+            <Text style={styles.barValue}>{hp}/{maxHp}</Text>
+          </View>
+        </View>
+
+        {/* CURRENT ACTION / THOUGHTS */}
+        <View style={styles.actionBox}>
+          <Text style={styles.actionLabel}>SYSTEM INTENT: {currentTask || 'EXPLORING'}</Text>
+          <Text style={styles.actionText} numberOfLines={2}>
+            {"> "}{currentAction}
+          </Text>
+        </View>
+      </View>
+
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.borderRadius.lg,
-    padding: theme.spacing.md,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
-    marginHorizontal: theme.spacing.md,
-    marginTop: 20,
-  },
-  header: {
     flexDirection: 'row',
-    marginBottom: theme.spacing.sm,
+    alignItems: 'center',
+    marginLeft: 0,
+    marginTop: -25, // Overlap effect with header
   },
-  avatarBorder: {
-    padding: 2,
-    borderRadius: theme.borderRadius.lg,
+  avatarWrapper: {
+    zIndex: 10,
+  },
+  avatarGlow: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    padding: 3,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: theme.colors.primary,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 10,
+    elevation: 15,
+  },
+  avatarInner: {
+    width: 114,
+    height: 114,
+    borderRadius: 57,
+    backgroundColor: '#000',
+    overflow: 'hidden',
     borderWidth: 2,
-    borderColor: theme.colors.accent,
+    borderColor: 'rgba(0,0,0,0.8)',
   },
   avatar: {
-    width: 64,
-    height: 64,
-    borderRadius: theme.borderRadius.lg - 2,
-  },
-  info: {
-    flex: 1,
-    marginLeft: theme.spacing.md,
-    justifyContent: 'center',
-  },
-  name: {
-    color: theme.colors.text.primary,
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  locationBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  locationText: {
-    color: theme.colors.text.muted,
-    fontSize: 10,
-    fontWeight: 'bold',
-    marginLeft: 4,
-  },
-  hpBarContainer: {
-    height: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 6,
-    overflow: 'hidden',
-    justifyContent: 'center',
-  },
-  hpBar: {
+    width: '100%',
     height: '100%',
-    backgroundColor: theme.colors.danger,
-    position: 'absolute',
   },
-  hpText: {
-    color: 'white',
-    fontSize: 8,
-    fontWeight: 'bold',
-    textAlign: 'center',
-  },
-  goalContainer: {
-    flexDirection: 'row',
-    backgroundColor: 'rgba(99, 102, 241, 0.1)',
-    padding: 6,
-    borderRadius: theme.borderRadius.sm,
-    marginBottom: theme.spacing.md,
-    alignItems: 'center',
+  statsPanel: {
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    paddingLeft: 65, // Room for overlapping avatar
+    paddingRight: 20,
+    paddingVertical: 12,
+    borderRadius: 8,
     borderWidth: 1,
-    borderColor: 'rgba(99, 102, 241, 0.2)',
+    borderColor: 'rgba(255, 255, 255, 0.15)',
+    marginLeft: -55, // Shift left to overlap
+    minWidth: 260,
+    marginTop: 20,
   },
-  goalText: {
-    color: theme.colors.primary,
-    fontSize: 10,
-    fontWeight: 'bold',
-    marginLeft: 6,
-    textTransform: 'uppercase',
-  },
-  statsRow: {
+  headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    gap: theme.spacing.sm,
+    alignItems: 'flex-start',
+    marginBottom: 8,
   },
-  nameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.sm,
-    marginBottom: 4,
-  },
-  levelBadge: {
-    backgroundColor: theme.colors.accent,
+  statusBadge: {
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
   },
-  levelText: {
-    color: theme.colors.background,
+  statusText: {
+    color: '#fff',
+    fontSize: 8,
+    fontWeight: '900',
+  },
+  name: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '900',
+    textShadowColor: 'rgba(0,0,0,0.8)',
+    textShadowRadius: 2,
+    letterSpacing: 0.5,
+  },
+  level: {
+    color: theme.colors.text.secondary,
+    fontSize: 11,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+  },
+  barRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+    gap: 8,
+  },
+  barLabel: {
+    color: '#fff',
+    fontSize: 8,
+    fontWeight: '900',
+    width: 45,
+  },
+  barContainer: {
+    flex: 1,
+    height: 12,
+    backgroundColor: '#000',
+    borderRadius: 2,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    overflow: 'hidden',
+    justifyContent: 'center',
+  },
+  barFill: {
+    height: '100%',
+  },
+  barValue: {
+    position: 'absolute',
+    width: '100%',
+    textAlign: 'center',
+    color: '#fff',
+    fontSize: 8,
+    fontWeight: '900',
+    textShadowColor: '#000',
+    textShadowRadius: 1,
+  },
+  actionBox: {
+    marginTop: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 4,
+    padding: 6,
+    borderLeftWidth: 2,
+    borderLeftColor: theme.colors.accent,
+  },
+  actionLabel: {
+    color: theme.colors.accent,
+    fontSize: 7,
+    fontWeight: '900',
+    marginBottom: 2,
+  },
+  actionText: {
+    color: '#fff',
     fontSize: 10,
-    fontWeight: 'bold',
+    fontWeight: '500',
+    fontStyle: 'italic',
   },
 });

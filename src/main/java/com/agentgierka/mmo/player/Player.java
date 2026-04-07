@@ -34,12 +34,16 @@ public class Player {
      */
     private Integer charisma;
 
+    @Builder.Default
+    private Integer maxThinkingSteps = 1;
+
     public static Player create(String username, String encodedPassword) {
         return Player.builder()
                 .username(username)
                 .password(encodedPassword)
                 .gold(100L)
                 .charisma(10)
+                .maxThinkingSteps(1)
                 .build();
     }
 }

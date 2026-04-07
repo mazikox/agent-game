@@ -57,14 +57,26 @@ public class Agent {
 
     private String goal;
 
+    private Integer remainingThinkingSteps;
+
     private String currentTask;
 
     private String currentActionDescription;
 
-    public void assignGoal(String newGoal) {
+    public void assignGoal(String newGoal, int quota) {
         this.goal = newGoal;
+        this.remainingThinkingSteps = quota;
         this.currentTask = "Waiting for goal analysis...";
         this.status = AgentStatus.IDLE;
+    }
+
+    public void cancelCurrentGoal() {
+        this.goal = null;
+        this.targetX = null;
+        this.targetY = null;
+        this.status = AgentStatus.IDLE;
+        this.currentActionDescription = "Goal cancelled by user.";
+        this.remainingThinkingSteps = 0;
     }
 
     public boolean hasActiveGoal() {
@@ -91,6 +103,10 @@ public class Agent {
         this.targetY = null;
         this.status = AgentStatus.IDLE;
         this.currentActionDescription = "Arrived at destination (" + x + ", " + y + ")";
+        
+        if (remainingThinkingSteps != null && remainingThinkingSteps <= 0) {
+            this.goal = null;
+        }
     }
 
     public void teleport(Location location, Integer x, Integer y) {
@@ -121,6 +137,8 @@ public class Agent {
                 .name(this.name)
                 .x(this.x)
                 .y(this.y)
+                .mapWidth(currentLocation != null && currentLocation.getWidth() != null ? currentLocation.getWidth() : 0)
+                .mapHeight(currentLocation != null && currentLocation.getHeight() != null ? currentLocation.getHeight() : 0)
                 .locationName(currentLocation != null ? currentLocation.getName() : "Unknown")
                 .locationDescription(currentLocation != null ? currentLocation.getDescription() : "")
                 .currentGoal(this.goal)
@@ -148,6 +166,18 @@ public class Agent {
         if (this.targetX != null && this.targetY != null &&
                 (!this.targetX.equals(this.x) || !this.targetY.equals(this.y))) {
             this.status = AgentStatus.MOVING;
+        }
+
+        consumeThinkingStep();
+    }
+
+    private void consumeThinkingStep() {
+        if (remainingThinkingSteps != null) {
+            remainingThinkingSteps--;
+            if (remainingThinkingSteps <= 0 && status == AgentStatus.IDLE) {
+                this.goal = null;
+                this.currentActionDescription = "Task finished (Manual mode).";
+            }
         }
     }
 

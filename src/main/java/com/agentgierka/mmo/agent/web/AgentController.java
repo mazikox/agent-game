@@ -49,16 +49,18 @@ public class AgentController {
     @PostMapping("/{id}/move")
     @PreAuthorize("@agentSecurity.isOwner(#id)")
     public AgentDto move(@PathVariable("id") UUID id, @RequestParam("x") Integer x, @RequestParam("y") Integer y) {
-        log.info("Agent {} moving to ({}, {})", id, x, y);
+        var agent = agentService.findById(id);
+        log.info("Agent {} moving to ({}, {})", agent.getName(), x, y);
         return agentMapper.toDto(agentService.moveTo(id, x, y));
     }
 
     @PostMapping("/{id}/goal")
     @PreAuthorize("@agentSecurity.isOwner(#id)")
     public AgentDto assignGoal(@PathVariable("id") UUID id, @RequestBody String goal) {
-        log.info("Assigning goal to agent {}: {}", id, goal);
+        var agent = agentService.findById(id);
+        log.info("Assigning goal to agent {}: {}", agent.getName(), goal);
         agentService.assignGoal(id, goal);
-        return agentMapper.toDto(agentService.findById(id));
+        return agentMapper.toDto(agent);
     }
 
     @PostMapping("/{id}/status")
@@ -67,5 +69,13 @@ public class AgentController {
         log.info("Updating agent {} status to {}: {}", id, status, description);
         AgentStatus agentStatus = AgentStatus.valueOf(status.toUpperCase());
         return agentMapper.toDto(agentService.updateStatus(id, agentStatus, description));
+    }
+
+    @PostMapping("/{id}/interrupt")
+    @PreAuthorize("@agentSecurity.isOwner(#id)")
+    public AgentDto interrupt(@PathVariable("id") UUID id) {
+        log.info("Interrupting agent {}", id);
+        agentService.interruptAgent(id);
+        return agentMapper.toDto(agentService.findById(id));
     }
 }

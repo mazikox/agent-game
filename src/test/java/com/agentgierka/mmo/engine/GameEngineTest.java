@@ -4,9 +4,11 @@ import com.agentgierka.mmo.agent.model.AgentStatus;
 import com.agentgierka.mmo.agent.model.AgentWorldState;
 import com.agentgierka.mmo.agent.repository.AgentWorldStateRepository;
 import com.agentgierka.mmo.agent.service.AgentPersistenceService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentMatchers;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -27,8 +29,16 @@ class GameEngineTest {
     @Mock
     private AgentPersistenceService agentPersistenceService;
 
+    @Mock
+    private EngineControl engineControl;
+
     @InjectMocks
     private GameEngine gameEngine;
+
+    @BeforeEach
+    void setUp() {
+        lenient().when(engineControl.isReady()).thenReturn(true);
+    }
 
     @Test
     @DisplayName("Should move agent one step closer in both axes on each tick")
@@ -50,7 +60,7 @@ class GameEngineTest {
         // Then
         assertEquals(51, state.getX());
         assertEquals(51, state.getY());
-        verify(agentWorldStateRepository).saveAll(anyList());
+        verify(agentWorldStateRepository).updateAtomic(state);
         verifyNoInteractions(agentPersistenceService);
     }
 
@@ -74,7 +84,7 @@ class GameEngineTest {
         // Then
         assertEquals(51, state.getX());
         assertEquals(60, state.getY());
-        verify(agentWorldStateRepository).saveAll(anyList());
+        verify(agentWorldStateRepository).updateAtomic(state);
     }
 
     @Test
@@ -99,7 +109,7 @@ class GameEngineTest {
         assertEquals(60, state.getY());
         verify(agentPersistenceService).finalizeMovement(state);
         // Should not save to Redis again if finalized
-        verify(agentWorldStateRepository, never()).saveAll(anyList());
+        verify(agentWorldStateRepository, never()).updateAtomic(any());
     }
 
     @Test
@@ -112,7 +122,7 @@ class GameEngineTest {
         gameEngine.tick();
 
         // Then
-        verify(agentWorldStateRepository, never()).saveAll(anyList());
+        verify(agentWorldStateRepository, never()).updateAtomic(any());
         verifyNoInteractions(agentPersistenceService);
     }
 }

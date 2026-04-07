@@ -22,6 +22,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class AgentWorldState implements Serializable {
     private UUID agentId;
+    private String agentName;
     private Integer x;
     private Integer y;
     private Integer targetX;
@@ -30,6 +31,13 @@ public class AgentWorldState implements Serializable {
     
     @Builder.Default
     private Integer speed = 1;
+
+    @Builder.Default
+    private long version = 0;
+
+    public void incrementVersion() {
+        this.version++;
+    }
 
     @JsonIgnore
     public boolean updatePosition() {

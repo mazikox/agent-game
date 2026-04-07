@@ -1,22 +1,32 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { StyleSheet, View, SafeAreaView, StatusBar, Text, ScrollView, ActivityIndicator } from 'react-native';
+import { StyleSheet, View, SafeAreaView, StatusBar, Text, ActivityIndicator } from 'react-native';
 import { theme } from './src/theme/theme';
 import { AgentProfile } from './src/features/agent/AgentProfile';
 import { MapView } from './src/features/world/MapView';
-import { ActionFeed } from './src/features/feed/ActionFeed';
-import { CommandPanel } from './src/features/controls/CommandPanel';
+import { AgentConsole } from './src/features/hud/AgentConsole';
+import { TopBar } from './src/features/hud/TopBar';
+import { SideMenu } from './src/features/hud/SideMenu';
 import { agentApi } from './src/api/agentApi';
-import { LinearGradient } from 'expo-linear-gradient';
 import { LoginScreen } from './src/features/auth/LoginScreen';
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [agent, setAgent] = useState(null);
   const [location, setLocation] = useState(null);
+  const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const handleLoginSuccess = (token) => {
+  const addLog = (message) => {
+    const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    setLogs(prev => {
+      // Don't add duplicate consecutive logs
+      if (prev.length > 0 && prev[prev.length - 1].message === message) return prev;
+      return [...prev, { time, message }].slice(-50); // Keep last 50
+    });
+  };
+
+  const handleLoginSuccess = () => {
     setIsAuthenticated(true);
   };
 
@@ -24,11 +34,14 @@ export default function App() {
     try {
       const agents = await agentApi.getAllAgents();
       if (agents && agents.length > 0) {
-        // 1. Fetch live agent position (Redis-backed)
         const detailedAgent = await agentApi.getAgentDetails(agents[0].id);
         setAgent(detailedAgent);
         
-        // 2. If location changed, fetch map context (Postgres-backed)
+        // Update logs if action changed
+        if (detailedAgent.currentActionDescription) {
+          addLog(detailedAgent.currentActionDescription);
+        }
+
         if (!location || location.id !== detailedAgent.currentLocationId) {
            const locDetails = await agentApi.getLocationDetails(detailedAgent.currentLocationId);
            setLocation(locDetails);
@@ -37,7 +50,7 @@ export default function App() {
       }
     } catch (err) {
       console.error("API Error:", err);
-      setError("Błąd połączenia z serwerem MMO");
+      setError("Błąd połączenia");
     } finally {
       setLoading(false);
     }
@@ -46,12 +59,13 @@ export default function App() {
   useEffect(() => {
     if (!isAuthenticated) return;
     fetchAgentData();
-    const interval = setInterval(fetchAgentData, 3000);
+    const interval = setInterval(fetchAgentData, 1000);
     return () => clearInterval(interval);
   }, [fetchAgentData, isAuthenticated]);
 
   const handleCommand = async (goal) => {
     if (agent) {
+      addLog("> USER CMD: " + goal);
       await agentApi.sendGoal(agent.id, goal);
       fetchAgentData();
     }
@@ -64,129 +78,117 @@ export default function App() {
   if (loading && !agent) {
     return (
       <View style={[styles.container, styles.center]}>
-        <ActivityIndicator size="large" color={theme.colors.accent} />
+        <ActivityIndicator size="large" color={theme.colors.gold} />
         <Text style={styles.loadingText}>Łączenie z krainą...</Text>
       </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" />
-      <LinearGradient
-        colors={[theme.colors.background, '#1a1a1c']}
-        style={styles.gradient}
-      >
-        <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
-          <View style={styles.header}>
-            <Text style={styles.gameTitle}>BOT KINGDOMS</Text>
-            <View style={styles.onlineBadge}>
-              <View style={styles.onlineDot} />
-              <Text style={styles.onlineText}>{error ? 'Offline' : 'Live'}</Text>
-            </View>
-          </View>
+    <View style={styles.container}>
+      <StatusBar hidden />
+      
+      {/* BACKGROUND LAYER - Functional Map */}
+      <MapView 
+        agentX={agent?.x || 0}
+        agentY={agent?.y || 0}
+        mapWidth={location ? location.width : 100}
+        mapHeight={location ? location.height : 100}
+        portals={location ? location.portals : []}
+        locationName={location ? location.name : 'Unknown Realm'}
+      />
 
-          {agent ? (
-            <>
-              <AgentProfile 
-                name={agent.name}
-                level={agent.level}
-                hp={agent.hp}
-                maxHp={agent.maxHp}
-                experience={agent.experience}
-                expThreshold={agent.expThreshold}
-                x={agent.x}
-                y={agent.y}
-                locationName={location ? location.name : 'Unknown'}
-                goal={agent.goal}
-              />
-
-              <MapView 
-                agentX={agent.x}
-                agentY={agent.y}
-                mapWidth={location ? location.width : 100}
-                mapHeight={location ? location.height : 100}
-                portals={location ? location.portals : []}
-              />
-            </>
-          ) : (
-            <View style={styles.errorContainer}>
-              <Text style={styles.errorText}>{error || "Brak aktywnych agentów w bazie."}</Text>
-            </View>
-          )}
-
-          <ActionFeed />
-        </ScrollView>
-
-        {agent && (
-          <CommandPanel 
-            agentId={agent.id} 
-            onCommandSent={handleCommand} 
+      {/* HUD LAYER */}
+      <View style={[styles.hudOverlay, { pointerEvents: 'box-none' }]}>
+        <SafeAreaView style={{ flex: 1, pointerEvents: 'box-none' }}>
+          
+          {/* HEADER LAYER */}
+          <TopBar 
+            gold={1575} 
+            gems={28} 
+            locationName={location ? location.name : 'Unknown Realm'} 
           />
-        )}
-      </LinearGradient>
-    </SafeAreaView>
+
+          {/* OVERLAPPING COMPONENTS */}
+          <View style={[styles.contentContainer, { pointerEvents: 'box-none' }]}>
+            
+            {/* TOP LEFT: PROFILE */}
+            <AgentProfile 
+              name={agent?.name || 'Shadow-01'}
+              level={agent?.level || 1}
+              hp={agent?.hp || 100}
+              maxHp={agent?.maxHp || 100}
+              status={agent?.status}
+              x={agent?.x}
+              y={agent?.y}
+              mapWidth={agent?.mapWidth}
+              mapHeight={agent?.mapHeight}
+              currentTask={agent?.currentTask}
+              currentAction={agent?.currentActionDescription}
+            />
+
+            {/* MIDDLE RIGHT: 2-COLUMN MENU */}
+            <SideMenu />
+
+            {/* BOTTOM LEFT / CENTER: AGENT CONSOLE */}
+            <View style={[styles.bottomLeftContainer, { pointerEvents: 'box-none' }]}>
+              <AgentConsole 
+                agentId={agent?.id} 
+                logs={logs}
+                onCommandSent={handleCommand} 
+              />
+            </View>
+
+          </View>
+        </SafeAreaView>
+      </View>
+
+      {error && (
+        <View style={styles.onlineBadge}>
+          <Text style={styles.onlineText}>Offline</Text>
+        </View>
+      )}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background,
+    backgroundColor: '#000',
   },
   center: {
     justifyContent: 'center',
     alignItems: 'center',
   },
-  gradient: {
+  hudOverlay: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  contentContainer: {
     flex: 1,
+    padding: theme.spacing.hud,
   },
-  scroll: {
-    flex: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: theme.spacing.lg,
-    paddingTop: theme.spacing.md,
-  },
-  gameTitle: {
-    color: theme.colors.text.primary,
-    fontSize: 14,
-    fontWeight: '900',
-    letterSpacing: 2,
-  },
-  onlineBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(16, 185, 129, 0.1)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
-  },
-  onlineDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: theme.colors.success,
-    marginRight: 6,
-  },
-  onlineText: {
-    color: theme.colors.success,
-    fontSize: 10,
-    fontWeight: 'bold',
+  bottomLeftContainer: {
+    position: 'absolute',
+    bottom: 20,
+    left: 20,
   },
   loadingText: {
     color: theme.colors.text.muted,
     marginTop: theme.spacing.md,
   },
-  errorContainer: {
-    padding: theme.spacing.xl,
-    alignItems: 'center',
+  onlineBadge: {
+    position: 'absolute',
+    top: 60,
+    right: 20,
+    backgroundColor: 'rgba(239, 68, 68, 0.2)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
   },
-  errorText: {
+  onlineText: {
     color: theme.colors.danger,
-    textAlign: 'center',
+    fontSize: 10,
+    fontWeight: 'bold',
   }
 });

@@ -1,24 +1,23 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { theme } from '../../theme/theme';
-import { Zap, Swords, User } from 'lucide-react-native';
+import { ChevronRight } from 'lucide-react-native';
 
-const FeedItem = ({ type, title, message, time }) => {
-  const isFight = type === 'FIGHT';
-  const Icon = isFight ? Swords : User;
-  
+const LogItem = ({ message, time }) => {
   return (
     <View style={styles.item}>
-      <View style={[styles.iconContainer, { backgroundColor: isFight ? 'rgba(239, 68, 68, 0.1)' : 'rgba(99, 102, 241, 0.1)' }]}>
-        <Icon size={14} color={isFight ? theme.colors.danger : theme.colors.primary} />
-      </View>
-      <View style={styles.itemContent}>
-        <View style={styles.itemHeader}>
-          <Text style={styles.itemTitle}>{title}</Text>
-          <Text style={styles.itemTime}>{time}</Text>
-        </View>
-        <Text style={styles.itemMessage}>{message}</Text>
-      </View>
+      <Text style={styles.itemTime}>[{time}]</Text>
+      <Text style={styles.itemMessage}>
+        {message.split(' ').map((word, i) => {
+          // Decorative coloring for certain words
+          const isHighlight = word.includes('Dragon') || word.includes('Peak') || word.includes('Lair');
+          return (
+            <Text key={i} style={isHighlight ? styles.highlight : null}>
+              {word}{' '}
+            </Text>
+          );
+        })}
+      </Text>
     </View>
   );
 };
@@ -27,21 +26,25 @@ export const ActionFeed = () => {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Zap size={14} color={theme.colors.accent} />
-        <Text style={styles.headerTitle}>Ostatnia Aktywność</Text>
+        <Text style={styles.headerTitle}>AGENT LOG</Text>
+        <ChevronRight size={12} color={theme.colors.text.muted} />
       </View>
-      <ScrollView showsVerticalScrollIndicator={false} style={styles.scroll}>
-        <FeedItem 
-          type="FIGHT" 
-          title="Twoja Walka" 
-          message="Zalewasz Szkielet serią ciosów! Zadajesz 12 pkt obrażeń." 
-          time="teraz"
+      <ScrollView showsVerticalScrollIndicator={true} style={styles.scroll}>
+        <LogItem 
+          time="15:01" 
+          message="Lyra navigated to Dragon's Peak." 
         />
-        <FeedItem 
-          type="SOCIAL" 
-          title="Inny Gracz" 
-          message="MistrzGier przeszedł obok Ciebie zmierzając do Portalu." 
-          time="2 min"
+        <LogItem 
+          time="15:05" 
+          message="Sighted a young dragon near the lair." 
+        />
+        <LogItem 
+          time="15:10" 
+          message="Initiating stealth approach." 
+        />
+        <LogItem 
+          time="15:12" 
+          message="Lyra collected 2 Dragon Scale Fragments." 
         />
       </ScrollView>
     </View>
@@ -50,65 +53,52 @@ export const ActionFeed = () => {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: theme.colors.surface,
-    borderTopLeftRadius: theme.borderRadius.xl,
-    borderTopRightRadius: theme.borderRadius.xl,
-    padding: theme.spacing.lg,
+    height: 140,
+    width: 380,
+    backgroundColor: theme.colors.glass,
+    borderRadius: 8,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
+    borderColor: theme.colors.borderLight,
+    padding: 10,
+    marginBottom: 8,
   },
   header: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: theme.spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.05)',
+    paddingBottom: 4,
+    marginBottom: 6,
   },
   headerTitle: {
-    color: theme.colors.text.primary,
-    fontSize: 14,
-    fontWeight: 'bold',
-    marginLeft: theme.spacing.sm,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    color: theme.colors.accent,
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 1,
   },
   scroll: {
     flex: 1,
   },
   item: {
     flexDirection: 'row',
-    marginBottom: theme.spacing.md,
-    backgroundColor: 'rgba(255, 255, 255, 0.02)',
-    padding: theme.spacing.sm,
-    borderRadius: theme.borderRadius.md,
-  },
-  iconContainer: {
-    width: 32,
-    height: 32,
-    borderRadius: theme.borderRadius.sm,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: theme.spacing.md,
-  },
-  itemContent: {
-    flex: 1,
-  },
-  itemHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 2,
-  },
-  itemTitle: {
-    color: theme.colors.text.primary,
-    fontSize: 12,
-    fontWeight: 'bold',
+    marginBottom: 4,
+    alignItems: 'flex-start',
   },
   itemTime: {
     color: theme.colors.text.muted,
-    fontSize: 10,
+    fontSize: 11,
+    fontFamily: 'System', // Use mono if available
+    marginRight: 8,
   },
   itemMessage: {
-    color: theme.colors.text.secondary,
-    fontSize: 12,
-    lineHeight: 16,
+    color: theme.colors.text.primary,
+    fontSize: 11,
+    flex: 1,
+    lineHeight: 15,
+  },
+  highlight: {
+    color: theme.colors.accent,
+    fontWeight: 'bold',
   },
 });

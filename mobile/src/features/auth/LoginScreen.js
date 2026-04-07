@@ -6,8 +6,8 @@ import { LogIn, UserPlus } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
 export const LoginScreen = ({ onLoginSuccess }) => {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+  const [username, setUsername] = useState('MasterAdmin');
+  const [password, setPassword] = useState('admin123');
   const [loading, setLoading] = useState(false);
   const [isRegisterMode, setIsRegisterMode] = useState(false);
 

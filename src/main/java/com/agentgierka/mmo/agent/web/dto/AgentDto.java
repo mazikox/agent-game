@@ -22,6 +22,9 @@ public class AgentDto {
     private Integer speed;
     private AgentStatus status;
     private String currentActionDescription;
+    private String currentTask;
+    private Integer mapWidth;
+    private Integer mapHeight;
 
     // --- RPG Stats ---
     private Integer hp;

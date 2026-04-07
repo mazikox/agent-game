@@ -1,150 +1,236 @@
-import React from 'react';
-import { View, StyleSheet, Dimensions, Text } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { View, StyleSheet, Text, ImageBackground, Animated } from 'react-native';
 import { theme } from '../../theme/theme';
-import { User, Atom } from 'lucide-react-native';
+import { MapPin, Atom } from 'lucide-react-native';
 
-const GRID_SIZE = 10; // Number of cells to show
+const Corner = ({ position }) => {
+  const styles = StyleSheet.create({
+    corner: {
+      position: 'absolute',
+      width: 15,
+      height: 15,
+      borderColor: theme.colors.gold,
+      zIndex: 5,
+    },
+    topLeft: { top: -2, left: -2, borderTopWidth: 3, borderLeftWidth: 3 },
+    topRight: { top: -2, right: -2, borderTopWidth: 3, borderRightWidth: 3 },
+    bottomLeft: { bottom: -2, left: -2, borderBottomWidth: 3, borderLeftWidth: 3 },
+    bottomRight: { bottom: -2, right: -2, borderBottomWidth: 3, borderRightWidth: 3 },
+  });
+  return <View style={[styles.corner, styles[position]]} />;
+};
 
-export const MapView = ({ agentX, agentY, mapWidth, mapHeight, portals = [] }) => {
-  // Normalize positions to a 10x10 preview grid
-  // In a real MMO, this would be a scrollable larger map
-  const renderGrid = () => {
-    const cells = [];
-    for (let i = 0; i < 100; i++) {
-      const x = i % 10;
-      const y = Math.floor(i / 10);
-      
-      // Calculate real-world coordinates for this cell 
-      // Mapping a 100x100 world to a 10x10 UI grid
-      const worldXMin = (x / 10) * mapWidth;
-      const worldXMax = ((x + 1) / 10) * mapWidth;
-      const worldYMin = (y / 10) * mapHeight;
-      const worldYMax = ((y + 1) / 10) * mapHeight;
+const PulseIcon = ({ children }) => {
+  const scale = useRef(new Animated.Value(1)).current;
+  const opacity = useRef(new Animated.Value(0.8)).current;
 
-      const isAgentInCell = agentX >= worldXMin && agentX < worldXMax && 
-                            agentY >= worldYMin && agentY < worldYMax;
+  useEffect(() => {
+    Animated.loop(
+      Animated.parallel([
+        Animated.sequence([
+          Animated.timing(scale, { toValue: 1.2, duration: 1000, useNativeDriver: true }),
+          Animated.timing(scale, { toValue: 1, duration: 1000, useNativeDriver: true }),
+        ]),
+        Animated.sequence([
+          Animated.timing(opacity, { toValue: 0.4, duration: 1000, useNativeDriver: true }),
+          Animated.timing(opacity, { toValue: 0.8, duration: 1000, useNativeDriver: true }),
+        ])
+      ])
+    ).start();
+  }, [scale, opacity]);
 
-      const portalInCell = portals.find(p => 
-        p.sourceX >= worldXMin && p.sourceX < worldXMax && 
-        p.sourceY >= worldYMin && p.sourceY < worldYMax
-      );
+  return (
+    <Animated.View style={{ transform: [{ scale }], opacity }}>
+      {children}
+    </Animated.View>
+  );
+};
 
-      cells.push(
-        <View key={i} style={styles.cell}>
-          {portalInCell && (
-            <View style={styles.portalContainer}>
-              <Atom size={12} color={theme.colors.primary} />
-            </View>
-          )}
-          {isAgentInCell && (
-            <View style={styles.agentMarker}>
-              <View style={styles.agentPulse} />
-              <User size={14} color={theme.colors.accent} strokeWidth={3} />
-            </View>
-          )}
-        </View>
-      );
-    }
-    return cells;
-  };
+// Map asset mapping
+const MAP_ASSETS = {
+  'Forest of Beginnings': require('../../../assets/maps/forest_of_beginnings.png'),
+  'Azure Meadow': require('../../../assets/maps/azure_meadow.png'),
+  'default': require('../../../assets/rpg_map.png'),
+};
+
+export const MapView = ({ agentX, agentY, mapWidth, mapHeight, portals = [], locationName = "" }) => {
+  const [currentMap, setCurrentMap] = useState(MAP_ASSETS['default']);
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  
+  // Position animation for the agent
+  const agentPos = useRef(new Animated.ValueXY({ 
+      x: (agentX / mapWidth) * 100, 
+      y: (agentY / mapHeight) * 100 
+  })).current;
+
+  // Track map changes for fade effect
+  useEffect(() => {
+    const nextMap = MAP_ASSETS[locationName] || MAP_ASSETS['default'];
+    if (nextMap === currentMap) return;
+
+    Animated.timing(fadeAnim, { toValue: 0, duration: 300, useNativeDriver: true }).start(() => {
+      setCurrentMap(nextMap);
+      Animated.timing(fadeAnim, { toValue: 1, duration: 600, useNativeDriver: true }).start();
+    });
+  }, [locationName, currentMap, fadeAnim]);
+
+  // Handle smooth agent movement (interpolation over 1 second)
+  useEffect(() => {
+    Animated.timing(agentPos, {
+      toValue: { 
+          x: (agentX / mapWidth) * 100, 
+          y: (agentY / mapHeight) * 100 
+      },
+      duration: 1000, 
+      useNativeDriver: false, // Layout animations (left/top) don't support native driver
+    }).start();
+  }, [agentX, agentY, mapWidth, mapHeight, agentPos]);
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>PODGLĄD MAPY ({mapWidth}x{mapHeight})</Text>
-      </View>
-      <View style={styles.grid}>
-        {renderGrid()}
-      </View>
-      <View style={styles.legend}>
-        <View style={styles.legendItem}>
-          <View style={[styles.dot, { backgroundColor: theme.colors.accent }]} />
-          <Text style={styles.legendText}>TY [ {agentX}, {agentY} ]</Text>
-        </View>
-        <View style={styles.legendItem}>
-          <View style={[styles.dot, { backgroundColor: theme.colors.primary }]} />
-          <Text style={styles.legendText}>PORTALE</Text>
-        </View>
-      </View>
+      <Animated.View style={[styles.boardWrapper, { opacity: fadeAnim }]}>
+        <Corner position="topLeft" />
+        <Corner position="topRight" />
+        <Corner position="bottomLeft" />
+        <Corner position="bottomRight" />
+        
+        <ImageBackground 
+            source={currentMap}
+            style={styles.boardContent}
+            resizeMode="stretch" // Critical for coordinate alignment
+        >
+            <View style={styles.worldOverlay}>
+                {/* Portals */}
+                {portals.map((portal, index) => (
+                    <View 
+                        key={`portal-${index}`} 
+                        style={[
+                            styles.portalContainer, 
+                            { 
+                                left: `${(portal.sourceX / mapWidth) * 100}%`, 
+                                top: `${(portal.sourceY / mapHeight) * 100}%` 
+                            }
+                        ]}
+                    >
+                        <PulseIcon>
+                          <Atom size={20} color={theme.colors.primary} strokeWidth={2.5} />
+                        </PulseIcon>
+                        <Text style={styles.portalLabel}>
+                          {portal.targetLocationName || 'AZURE MEADOW'}
+                        </Text>
+                    </View>
+                ))}
+
+                {/* Agent Marker (Animated) */}
+                <Animated.View style={[
+                    styles.agentMarker,
+                    {
+                        left: agentPos.x.interpolate({
+                            inputRange: [0, 100],
+                            outputRange: ['0%', '100%']
+                        }),
+                        top: agentPos.y.interpolate({
+                            inputRange: [0, 100],
+                            outputRange: ['0%', '100%']
+                        })
+                    }
+                ]}>
+                    <View style={styles.pulseRing} />
+                    <View style={styles.agentTag}>
+                        <Text style={styles.agentTagText}>Shadow-01</Text>
+                        <Text style={styles.agentCoords}>({agentX}, {agentY})</Text>
+                    </View>
+                    <MapPin size={28} color={theme.colors.accent} strokeWidth={3} />
+                </Animated.View>
+            </View>
+        </ImageBackground>
+      </Animated.View>
     </View>
   );
 };
 
-const { width } = Dimensions.get('window');
-const CELL_SIZE = 16; // Stały, mały wymiar komórki (16px * 10 = 160px cała mapa)
-
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: theme.colors.surface,
-    padding: theme.spacing.md,
-    borderRadius: theme.borderRadius.lg,
-    marginHorizontal: theme.spacing.md,
-    marginBottom: theme.spacing.md,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
-  },
-  header: {
-    marginBottom: theme.spacing.sm,
-    borderLeftWidth: 3,
-    borderLeftColor: theme.colors.accent,
-    paddingLeft: 8,
-  },
-  title: {
-    color: theme.colors.text.secondary,
-    fontSize: 10,
-    fontWeight: 'bold',
-    letterSpacing: 1,
-  },
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    width: CELL_SIZE * 10,
-    height: CELL_SIZE * 10,
-    backgroundColor: 'rgba(0, 0, 0, 0.2)',
-    borderRadius: theme.borderRadius.sm,
-    overflow: 'hidden',
-    alignSelf: 'center', // Wyśrodkowanie siatki
-  },
-  cell: {
-    width: CELL_SIZE,
-    height: CELL_SIZE,
-    borderWidth: 0.2,
-    borderColor: 'rgba(255, 255, 255, 0.03)',
-    alignItems: 'center',
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#000',
     justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: -1,
   },
-  agentMarker: {
-    zIndex: 10,
+  boardWrapper: {
+    width: '90%', // Slightly larger for better view
+    aspectRatio: 1, // Enforce square if map is 100x100
+    borderWidth: 2,
+    borderColor: 'rgba(79, 209, 237, 0.4)',
+    backgroundColor: '#000',
+    position: 'relative',
+    shadowColor: theme.colors.primary,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.5,
+    shadowRadius: 10,
+    elevation: 10,
   },
-  agentPulse: {
-    position: 'absolute',
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    backgroundColor: 'rgba(245, 158, 11, 0.3)',
-    transform: [{ scale: 1.8 }],
+  boardContent: {
+    flex: 1,
+    overflow: 'hidden',
+  },
+  worldOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.15)',
   },
   portalContainer: {
-    opacity: 0.8,
-  },
-  legend: {
-    flexDirection: 'row',
-    marginTop: theme.spacing.md,
-    justifyContent: 'space-around',
-  },
-  legendItem: {
-    flexDirection: 'row',
+    position: 'absolute',
     alignItems: 'center',
+    justifyContent: 'center',
+    transform: [{ translateX: -10 }, { translateY: -10 }], // Center based on icon size
   },
-  dot: {
-    width: 8,
-    height: 8,
+  portalLabel: {
+    color: '#fff',
+    fontSize: 9,
+    fontWeight: '900',
+    marginTop: 2,
+    textShadowColor: 'black',
+    textShadowRadius: 4,
+    textAlign: 'center',
+  },
+  agentMarker: {
+    position: 'absolute',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 100,
+    transform: [{ translateX: -14 }, { translateY: -24 }], // Offset pin point
+  },
+  pulseRing: {
+    position: 'absolute',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(246, 173, 85, 0.4)',
+    borderWidth: 2,
+    borderColor: theme.colors.accent,
+  },
+  agentTag: {
+    position: 'absolute',
+    bottom: 35,
+    backgroundColor: 'rgba(0, 0, 0, 0.75)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
     borderRadius: 4,
-    marginRight: 6,
+    borderWidth: 1,
+    borderColor: theme.colors.accent,
+    alignItems: 'center',
+    minWidth: 70,
   },
-  legendText: {
-    color: theme.colors.text.muted,
-    fontSize: 10,
+  agentTagText: {
+    color: '#fff',
+    fontSize: 9,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+  },
+  agentCoords: {
+    color: theme.colors.accent,
+    fontSize: 8,
     fontWeight: 'bold',
+    marginTop: 1,
   },
 });

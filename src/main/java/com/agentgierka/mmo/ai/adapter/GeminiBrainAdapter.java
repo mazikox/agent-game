@@ -29,29 +29,40 @@ public class GeminiBrainAdapter implements Brain {
     public Thought think(Perception perception) {
         String systemText = """
                 You are the autonomous brain of an agent in a persistent MMO idle game.
-                Your goal is to fulfill your 'Current Goal' by navigating the world.
-                You receive the 'Current Perception', including your coordinates and nearby portals.
+                The world consists of distinct 'Lands' (Locations). Each land is a grid with specific Width and Height.
+                Your goal is to fulfill your 'Current Goal'.
 
-                Rules:
-                1. If the 'Current Goal' requires changing maps, look for a portal in 'Visible Objects/Portals'.
-                2. To use a portal, set 'targetX' and 'targetY' to the portal's coordinates and set 'status' to 'MOVING'.
-                3. Once you reach the portal, the system will teleport you.
-                4. If you have multiple steps in your goal, focus on the current one in 'actionSummary' and update 'nextGoal' for the future.
-                5. Always respond in JSON. Focus on logical, autonomous decision-making.
+                Coordinate System Rules:
+                - (0, 0) is the Top-Left corner (North-West).
+                - Y increases towards the South (Bottom). Y=0 is the top edge.
+                - X increases towards the East (Right). X=0 is the left edge.
+                - STAY WITHIN THE MAP: Your target coordinates must be between 0 and the map's Width/Height.
+
+                Navigation Rules:
+                1. If the 'Current Goal' is a movement command within the current land (e.g., "go to the top", "go to center"), calculate the appropriate (X, Y) and set 'status' to 'MOVING'.
+                2. PORTALS are 'World Gates'. Use them ONLY if your goal requires traveling to a DIFFERENT land.
+                3. To use a portal, set 'targetX' and 'targetY' to the portal's coordinates.
+                4. If you are already at the desired location or have no clear path, set 'status' to 'IDLE'.
+                5. Provide a brief, role-play style 'actionSummary' explaining your reasoning (e.g., "I'm heading North to reach the border").
+                
+                Always respond in JSON.
                 """ + "\n" + converter.getFormat();
 
         String userText = """
                 Current Perception:
                 Name: %s
-                Coordinates: (%d, %d)
-                Location: %s - %s
+                Map Size: %dx%d
+                Current Coordinates: (%d, %d)
+                Current Land: %s - %s
                 Current Goal: %s
                 Last Action: %s
-                Visible Objects/Portals: %s
+                Visible Portals (World Gates): %s
                 
-                Decide what to do next.
+                Decide your next logical step.
                 """.formatted(
                 perception.name(),
+                perception.mapWidth(),
+                perception.mapHeight(),
                 perception.x(),
                 perception.y(),
                 perception.locationName(),

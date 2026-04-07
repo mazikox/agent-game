@@ -62,6 +62,25 @@ public class AgentWorldStateRepository {
         return agentWorldStateTemplate.opsForValue().get(KEY_PREFIX + agentId);
     }
 
+    /**
+     * Updates the agent state atomically using optimistic locking.
+     * Returns true if update was successful, false if version was stale or record missing.
+     */
+    public boolean updateAtomic(AgentWorldState newState) {
+        AgentWorldState existing = findById(newState.getAgentId());
+        if (existing == null) {
+            return false;
+        }
+
+        if (existing.getVersion() != newState.getVersion()) {
+            return false;
+        }
+
+        newState.incrementVersion();
+        save(newState);
+        return true;
+    }
+
     public List<AgentWorldState> findAllActive() {
         Set<String> activeIds = mmoStringRedisTemplate.opsForSet().members(ACTIVE_AGENTS_SET);
         if (activeIds == null || activeIds.isEmpty()) {
@@ -85,5 +104,16 @@ public class AgentWorldStateRepository {
     public void delete(UUID agentId) {
         agentWorldStateTemplate.delete(KEY_PREFIX + agentId);
         mmoStringRedisTemplate.opsForSet().remove(ACTIVE_AGENTS_SET, agentId.toString());
+    }
+
+    /**
+     * Clears all agent-related data from Redis. Use with caution.
+     */
+    public void deleteAll() {
+        Set<String> keys = agentWorldStateTemplate.keys(KEY_PREFIX + "*");
+        if (keys != null && !keys.isEmpty()) {
+            agentWorldStateTemplate.delete(keys);
+        }
+        mmoStringRedisTemplate.delete(ACTIVE_AGENTS_SET);
     }
 }

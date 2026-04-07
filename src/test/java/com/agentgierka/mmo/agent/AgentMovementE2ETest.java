@@ -10,6 +10,7 @@ import com.agentgierka.mmo.player.Player;
 import com.agentgierka.mmo.player.PlayerRepository;
 import com.agentgierka.mmo.agent.web.AgentController;
 import com.agentgierka.mmo.ai.port.Brain;
+import com.agentgierka.mmo.engine.EngineControl;
 import com.agentgierka.mmo.world.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -26,7 +27,7 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -60,6 +61,9 @@ class AgentMovementE2ETest {
     private GameEngine gameEngine;
 
     @Autowired
+    private EngineControl engineControl;
+
+    @Autowired
     private TransactionTemplate transactionTemplate;
 
     @MockitoBean
@@ -70,7 +74,7 @@ class AgentMovementE2ETest {
 
     @BeforeEach
     void setup() {
-
+        engineControl.setReady(true);
         transactionTemplate.executeWithoutResult(s -> {
             portalRepository.deleteAll();
             agentRepository.deleteAll();
@@ -110,7 +114,7 @@ class AgentMovementE2ETest {
         gameEngine.tick();
         
         // Redis should be updated with new position
-        verify(agentWorldStateRepository, atLeastOnce()).saveAll(anyList());
+        verify(agentWorldStateRepository, atLeastOnce()).updateAtomic(any());
         
         // 4. PROCESS: Tick 2 (Move to 2, 2 -> Trigger Portal)
         // Update mock to reflect current state before next tick using builder for immutability

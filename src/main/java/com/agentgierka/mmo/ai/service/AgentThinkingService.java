@@ -42,8 +42,10 @@ public class AgentThinkingService {
                 .collect(Collectors.toList());
 
         log.info("--- AI THINKING START for Agent: {} ---", agent.getName());
-        log.info("Perception: Goal='{}', Location='{}', Coordinates=({},{}), Portals={}",
-                 agent.getGoal(), agent.getCurrentLocation().getName(), agent.getX(), agent.getY(), portals);
+        log.info("Perception: Goal='{}', Location='{}', size={}x{}, Coordinates=({},{}), Portals={}",
+                 agent.getGoal(), agent.getCurrentLocation().getName(), 
+                 agent.getCurrentLocation().getWidth(), agent.getCurrentLocation().getHeight(),
+                 agent.getX(), agent.getY(), portals);
 
         Thought thought = brain.think(agent.preparePerception(portals));
 

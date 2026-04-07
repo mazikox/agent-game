@@ -14,5 +14,7 @@ public interface AgentMapper {
     @Mapping(target = "experience", source = "stats.experience")
     @Mapping(target = "expThreshold", source = "stats.expThreshold")
     @Mapping(target = "level", source = "stats.level")
+    @Mapping(target = "mapWidth", source = "currentLocation.width")
+    @Mapping(target = "mapHeight", source = "currentLocation.height")
     AgentDto toDto(Agent agent);
 }

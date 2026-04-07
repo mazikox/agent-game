@@ -54,8 +54,8 @@ export const agentApi = {
    * Sends a high-level goal to the agent's AI brain.
    */
   sendGoal: async (id, goal) => {
-    const response = await apiClient.post(`/agents/${id}/goal`, null, {
-      params: { goal }
+    const response = await apiClient.post(`/agents/${id}/goal`, goal, {
+      headers: { 'Content-Type': 'text/plain' }
     });
     return response.data;
   },

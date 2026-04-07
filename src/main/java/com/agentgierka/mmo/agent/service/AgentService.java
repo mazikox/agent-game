@@ -37,10 +37,26 @@ public class AgentService {
         Agent agent = agentRepository.findById(agentId)
                 .orElseThrow(() -> new AgentNotFoundException(agentId.toString()));
 
-        agent.assignGoal(goal);
+        // Initialize quota from player's tier/maxThinkingSteps, fallback to 1
+        int initialQuota = (agent.getOwner() != null && agent.getOwner().getMaxThinkingSteps() != null) 
+                ? agent.getOwner().getMaxThinkingSteps() : 1;
+        
+        agent.assignGoal(goal, initialQuota);
         agentRepository.save(agent);
 
         eventPublisher.publishEvent(new GoalAssignedEvent(agentId));
+    }
+
+    @Transactional
+    public void interruptAgent(UUID agentId) {
+        Agent agent = agentRepository.findById(agentId)
+                .orElseThrow(() -> new AgentNotFoundException(agentId.toString()));
+
+        agent.cancelCurrentGoal();
+        agentRepository.save(agent);
+        
+        // Sync with Redis to stop movement IMMEDIATELY
+        worldStateSynchronizer.syncMovementAfterCommit(agent);
     }
 
     @Transactional(readOnly = true)

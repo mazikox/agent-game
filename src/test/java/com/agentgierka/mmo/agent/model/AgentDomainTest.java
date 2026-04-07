@@ -16,7 +16,7 @@ class AgentDomainTest {
     @Test
     @DisplayName("Should prepare perception with all relevant agent state")
     void shouldPreparePerceptionWithAllRelevantAgentState() {
-        Location forest = Location.builder().name("Deep Forest").build();
+        Location forest = Location.builder().name("Deep Forest").width(100).height(100).build();
         Agent agent = Agent.builder()
                 .name("Gierko")
                 .x(10).y(20)
@@ -34,6 +34,8 @@ class AgentDomainTest {
         assertEquals("Deep Forest", perception.locationName());
         assertEquals("Find a portal", perception.currentGoal());
         assertEquals("Resting", perception.lastActionDescription());
+        assertEquals(100, perception.mapWidth());
+        assertEquals(100, perception.mapHeight());
         assertTrue(perception.nearbyObjects().contains("Portal at (15, 15)"));
     }
 
