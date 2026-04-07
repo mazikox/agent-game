@@ -10,6 +10,7 @@ import java.util.UUID;
  */
 public record AgentArrivedEvent(
     UUID agentId,
+    String agentName,
     Location location,
     Integer x,
     Integer y,

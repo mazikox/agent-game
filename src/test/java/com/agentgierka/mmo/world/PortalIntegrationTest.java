@@ -69,13 +69,13 @@ class PortalIntegrationTest {
 
         // Given: A player and an agent in the forest
         Player player = playerRepository.save(Player.create("TestUser", "password"));
-        Agent agent = agentRepository.save(Agent.builder()
-                .name("PortalTester")
-                .owner(player)
-                .currentLocation(forest)
-                .x(0).y(0)
-                .status(AgentStatus.MOVING)
-                .build());
+        Agent agent = agentRepository.save(Agent.create(
+                "PortalTester",
+                player,
+                forest,
+                0, 0,
+                1 // speed
+        ));
 
         // Given: A WorldState representing the arrival at (10, 10)
         AgentWorldState arrivalState = AgentWorldState.builder()

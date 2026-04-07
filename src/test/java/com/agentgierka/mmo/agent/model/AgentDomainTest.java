@@ -17,13 +17,9 @@ class AgentDomainTest {
     @DisplayName("Should prepare perception with all relevant agent state")
     void shouldPreparePerceptionWithAllRelevantAgentState() {
         Location forest = Location.builder().name("Deep Forest").width(100).height(100).build();
-        Agent agent = Agent.builder()
-                .name("Gierko")
-                .x(10).y(20)
-                .currentLocation(forest)
-                .goal("Find a portal")
-                .currentActionDescription("Resting")
-                .build();
+        Agent agent = Agent.create("Gierko", null, forest, 10, 20, 1);
+        agent.assignGoal("Find a portal", 10);
+        agent.updateStatus(AgentStatus.IDLE, "Resting"); // Ensure description matches test expectation
         List<String> nearby = List.of("Portal at (15, 15)");
 
         Perception perception = agent.preparePerception(nearby);
@@ -42,7 +38,7 @@ class AgentDomainTest {
     @Test
     @DisplayName("Should update internal state when applying a thought")
     void shouldUpdateInternalStateWhenApplyingAThought() {
-        Agent agent = Agent.builder().name("Gierko").build();
+        Agent agent = Agent.create("Gierko", null, null, 0, 0, 1);
         Thought thought = Thought.builder()
                 .targetX(100).targetY(200)
                 .status("MOVING")
@@ -62,7 +58,8 @@ class AgentDomainTest {
     @Test
     @DisplayName("Should finalize movement and set idle status")
     void shouldFinalizeMovementAndSetIdleStatus() {
-        Agent agent = Agent.builder().status(AgentStatus.MOVING).build();
+        Agent agent = Agent.create("Mover", null, null, 0, 0, 1);
+        agent.updateStatus(AgentStatus.MOVING, "Moving...");
 
         agent.completeMovement(50, 60);
 
@@ -76,9 +73,7 @@ class AgentDomainTest {
     @Test
     @DisplayName("Should take damage and update current action description on death")
     void shouldTakeDamageCorrectly() {
-        Agent agent = Agent.builder().name("Shadow")
-                .stats(AgentStats.createInitial())
-                .build();
+        Agent agent = Agent.create("Shadow", null, null, 0, 0, 1);
 
         agent.takeDamage(30);
         assertEquals(70, agent.getStats().getHp());
@@ -91,9 +86,8 @@ class AgentDomainTest {
     @Test
     @DisplayName("Should gain experience and level up automatically")
     void shouldGainExperienceAndLevelUp() {
-        Agent agent = Agent.builder().name("Hero")
-                .stats(AgentStats.builder().hp(100).maxHp(100).level(1).experience(50).build())
-                .build();
+        Agent agent = Agent.create("Hero", null, null, 0, 0, 1);
+        agent.setStats(AgentStats.builder().hp(100).maxHp(100).level(1).experience(50).build());
 
         // Poziom 1 próg to 100 EXP. 50 + 60 = 110. Powinien być awans.
         agent.gainExperience(60);
@@ -106,9 +100,8 @@ class AgentDomainTest {
     @Test
     @DisplayName("Should heal to max HP but not above")
     void shouldHealCorrectly() {
-        Agent agent = Agent.builder()
-                .stats(AgentStats.builder().hp(50).maxHp(100).build())
-                .build();
+        Agent agent = Agent.create("Healer", null, null, 0, 0, 1);
+        agent.setStats(AgentStats.builder().hp(50).maxHp(100).build());
 
         agent.heal(20);
         assertEquals(70, agent.getStats().getHp());

@@ -15,6 +15,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 import com.agentgierka.mmo.agent.event.GoalAssignedEvent;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -51,7 +52,8 @@ class AgentServiceTest {
     void shouldAssignGoalAndPublishEvent() {
         // Given
         UUID agentId = UUID.randomUUID();
-        Agent agent = Agent.builder().id(agentId).name("Commander").build();
+        Agent agent = Agent.create("Commander", null, null, 0, 0, 1);
+        ReflectionTestUtils.setField(agent, "id", agentId);
         String goal = "Go to the safe zone";
 
         when(agentRepository.findById(agentId)).thenReturn(Optional.of(agent));
@@ -70,11 +72,8 @@ class AgentServiceTest {
     void shouldReturnPostgresDataWhenAgentIsNotMovingInRedis() {
         // Given
         UUID agentId = UUID.randomUUID();
-        Agent agent = Agent.builder()
-                .id(agentId)
-                .x(50).y(50)
-                .status(AgentStatus.IDLE)
-                .build();
+        Agent agent = Agent.create("IdleAgent", null, null, 50, 50, 1);
+        ReflectionTestUtils.setField(agent, "id", agentId);
 
         when(agentRepository.findById(agentId)).thenReturn(Optional.of(agent));
         when(agentWorldStateRepository.findById(agentId)).thenReturn(null);
@@ -93,11 +92,8 @@ class AgentServiceTest {
     void shouldOverrideWithRedisDataWhenAgentIsMoving() {
         // Given
         UUID agentId = UUID.randomUUID();
-        Agent postgresAgent = Agent.builder()
-                .id(agentId)
-                .x(50).y(50)
-                .status(AgentStatus.IDLE)
-                .build();
+        Agent postgresAgent = Agent.create("PostgresAgent", null, null, 50, 50, 1);
+        ReflectionTestUtils.setField(postgresAgent, "id", agentId);
 
         AgentWorldState redisState = AgentWorldState.builder()
                 .agentId(agentId)
@@ -123,10 +119,8 @@ class AgentServiceTest {
         // Given
         UUID agentId = UUID.randomUUID();
         Location forest = Location.builder().width(100).height(100).build();
-        Agent agent = Agent.builder()
-                .id(agentId)
-                .currentLocation(forest)
-                .build();
+        Agent agent = Agent.create("Runner", null, forest, 0, 0, 1);
+        ReflectionTestUtils.setField(agent, "id", agentId);
 
         when(agentRepository.findById(agentId)).thenReturn(Optional.of(agent));
 
@@ -142,12 +136,8 @@ class AgentServiceTest {
         // Given
         UUID agentId = UUID.randomUUID();
         Location forest = Location.builder().width(100).height(100).build();
-        Agent agent = Agent.builder()
-                .id(agentId)
-                .currentLocation(forest)
-                .x(50).y(50)
-                .speed(5)
-                .build();
+        Agent agent = Agent.create("FastRunner", null, forest, 50, 50, 5);
+        ReflectionTestUtils.setField(agent, "id", agentId);
 
         when(agentRepository.findById(agentId)).thenReturn(Optional.of(agent));
         when(agentRepository.save(any(Agent.class))).thenReturn(agent);
@@ -167,7 +157,8 @@ class AgentServiceTest {
     void shouldUpdateStatusInPostgresWhenRequested() {
         // Given
         UUID agentId = UUID.randomUUID();
-        Agent agent = Agent.builder().id(agentId).build();
+        Agent agent = Agent.create("StatusAgent", null, null, 0, 0, 1);
+        ReflectionTestUtils.setField(agent, "id", agentId);
 
         when(agentRepository.findById(agentId)).thenReturn(Optional.of(agent));
         when(agentRepository.save(any(Agent.class))).thenReturn(agent);

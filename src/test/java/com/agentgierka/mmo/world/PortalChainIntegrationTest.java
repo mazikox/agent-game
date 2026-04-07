@@ -128,6 +128,6 @@ class PortalChainIntegrationTest {
 
     private Agent saveAgent(String name, Location loc, int x, int y) {
         Player player = transactionTemplate.execute(s -> playerRepository.save(Player.create(name + "Player", "secret")));
-        return transactionTemplate.execute(s -> agentRepository.save(Agent.builder().name(name).owner(player).currentLocation(loc).x(x).y(y).status(AgentStatus.MOVING).build()));
+        return transactionTemplate.execute(s -> agentRepository.save(Agent.create(name, player, loc, x, y, 1)));
     }
 }

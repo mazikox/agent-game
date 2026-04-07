@@ -49,9 +49,9 @@ public class AgentController {
     @PostMapping("/{id}/move")
     @PreAuthorize("@agentSecurity.isOwner(#id)")
     public AgentDto move(@PathVariable("id") UUID id, @RequestParam("x") Integer x, @RequestParam("y") Integer y) {
-        var agent = agentService.findById(id);
+        var agent = agentService.moveTo(id, x, y);
         log.info("Agent {} moving to ({}, {})", agent.getName(), x, y);
-        return agentMapper.toDto(agentService.moveTo(id, x, y));
+        return agentMapper.toDto(agent);
     }
 
     @PostMapping("/{id}/goal")

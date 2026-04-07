@@ -2,7 +2,6 @@ package com.agentgierka.mmo.config;
 
 import com.agentgierka.mmo.agent.model.Agent;
 import com.agentgierka.mmo.agent.repository.AgentRepository;
-import com.agentgierka.mmo.agent.model.AgentStatus;
 import com.agentgierka.mmo.player.Player;
 import com.agentgierka.mmo.player.PlayerRepository;
 import com.agentgierka.mmo.agent.repository.AgentWorldStateRepository;
@@ -87,20 +86,15 @@ public class DataInitializer implements CommandLineRunner {
             Player master = Player.create("MasterAdmin", passwordEncoder.encode("admin123"));
             playerRepository.save(master);
 
-            // 5. Create a starting Agent
-            Agent scout = Agent.builder()
-                    .name("Shadow-01")
-                    .owner(master)
-                    .currentLocation(forest)
-                    .x(50)
-                    .y(50)
-                    .strength(5)
-                    .dexterity(8)
-                    .speed(2) // Increased speed for better visibility
-                    .stats(com.agentgierka.mmo.agent.model.AgentStats.createInitial())
-                    .status(AgentStatus.IDLE)
-                    .currentActionDescription("Standing at the forest entrance, waiting for orders.")
-                    .build();
+            // 5. Create a starting Agent using factory method
+            Agent scout = Agent.create(
+                    "Shadow-01",
+                    master,
+                    forest,
+                    50,
+                    50,
+                    2 // speed
+            );
             agentRepository.save(scout);
 
             log.info("Game data initialization complete (v1).");

@@ -107,7 +107,7 @@ public class AgentService {
 
         Agent savedAgent = agentRepository.save(agent);
 
-        worldStateSynchronizer.clearStateAndPublishArrival(agentId, location, x, y, MovementType.TELEPORT);
+        worldStateSynchronizer.clearStateAndPublishArrival(agentId, agent.getName(), location, x, y, MovementType.TELEPORT);
 
         return savedAgent;
     }

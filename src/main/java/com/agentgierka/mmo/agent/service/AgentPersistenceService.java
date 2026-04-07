@@ -35,6 +35,7 @@ public class AgentPersistenceService {
         
         eventPublisher.publishEvent(new AgentArrivedEvent(
                 agent.getId(),
+                agent.getName(),
                 agent.getCurrentLocation(),
                 agent.getX(),
                 agent.getY(),

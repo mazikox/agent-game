@@ -1,17 +1,17 @@
 package com.agentgierka.mmo.security;
 
 import com.agentgierka.mmo.agent.model.Agent;
-import com.agentgierka.mmo.agent.model.AgentStatus;
 import com.agentgierka.mmo.agent.repository.AgentRepository;
 import com.agentgierka.mmo.player.Player;
 import com.agentgierka.mmo.player.PlayerRepository;
+import com.agentgierka.mmo.world.Location;
+import com.agentgierka.mmo.world.LocationRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
-import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,10 +38,20 @@ class AgentOwnershipIntegrationTest {
     @Autowired
     private PlayerRepository playerRepository;
 
+    @Autowired
+    private LocationRepository locationRepository;
+
     private UUID ownerAgentId;
 
     @BeforeEach
     void setUp() {
+        // Create Location
+        Location forest = Location.builder()
+                .name("Security Forest")
+                .width(100).height(100)
+                .build();
+        locationRepository.save(forest);
+
         // Create Owner in DB
         Player owner = Player.create("ownerUser", "password");
         playerRepository.save(owner);
@@ -51,13 +61,11 @@ class AgentOwnershipIntegrationTest {
         playerRepository.save(other);
 
         // Link Agent to Owner
-        Agent agent = Agent.builder()
-                .name("Owner's Agent")
-                .owner(owner)
-                .status(AgentStatus.IDLE)
-                .x(0).y(0)
-                .build();
+        Agent agent = Agent.create("Owner's Agent", owner, forest, 0, 0, 1);
         ownerAgentId = agentRepository.save(agent).getId();
+        
+        // Ensure data is visible
+        agentRepository.flush();
     }
 
     @Test

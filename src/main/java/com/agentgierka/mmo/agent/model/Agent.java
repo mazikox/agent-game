@@ -16,7 +16,7 @@ import java.util.UUID;
 @Setter(AccessLevel.PROTECTED)
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
+@Builder(access = AccessLevel.PRIVATE)
 @ToString
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 public class Agent {
@@ -39,8 +39,6 @@ public class Agent {
     private Integer x;
     private Integer y;
 
-    private Integer strength;
-    private Integer dexterity;
 
     @Embedded
     @Builder.Default
@@ -62,6 +60,22 @@ public class Agent {
     private String currentTask;
 
     private String currentActionDescription;
+
+    /**
+     * Official factory method for creating new agents with guaranteed valid state.
+     */
+    public static Agent create(String name, Player owner, Location location, Integer x, Integer y, Integer speed) {
+        return Agent.builder()
+                .name(name)
+                .owner(owner)
+                .currentLocation(location)
+                .x(x).y(y)
+                .speed(speed != null ? speed : 1)
+                .status(AgentStatus.IDLE)
+                .stats(AgentStats.createInitial())
+                .currentActionDescription("Agent initialized: " + name)
+                .build();
+    }
 
     public void assignGoal(String newGoal, int quota) {
         this.goal = newGoal;

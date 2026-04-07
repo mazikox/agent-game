@@ -37,10 +37,10 @@ public class WorldStateSynchronizer {
         });
     }
 
-    public void clearStateAndPublishArrival(UUID agentId, Location location, Integer x, Integer y, MovementType type) {
+    public void clearStateAndPublishArrival(UUID agentId, String agentName, Location location, Integer x, Integer y, MovementType type) {
         executeAfterCommit(() -> {
             agentWorldStateRepository.delete(agentId);
-            eventPublisher.publishEvent(new AgentArrivedEvent(agentId, location, x, y, type));
+            eventPublisher.publishEvent(new AgentArrivedEvent(agentId, agentName, location, x, y, type));
         });
     }
 

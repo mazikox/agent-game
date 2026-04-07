@@ -8,7 +8,6 @@ import com.agentgierka.mmo.agent.repository.AgentWorldStateRepository;
 import com.agentgierka.mmo.engine.GameEngine;
 import com.agentgierka.mmo.player.Player;
 import com.agentgierka.mmo.player.PlayerRepository;
-import com.agentgierka.mmo.agent.web.AgentController;
 import com.agentgierka.mmo.ai.port.Brain;
 import com.agentgierka.mmo.engine.EngineControl;
 import com.agentgierka.mmo.world.*;
@@ -41,9 +40,6 @@ class AgentMovementE2ETest {
 
     @Autowired
     private MockMvc mockMvc;
-
-    @Autowired
-    private AgentController agentController;
 
     @Autowired
     private AgentRepository agentRepository;
@@ -153,7 +149,7 @@ class AgentMovementE2ETest {
             Player.create(name + "Player", "secret")
         ));
         return transactionTemplate.execute(s -> agentRepository.save(
-            Agent.builder().name(name).owner(player).currentLocation(loc).x(x).y(y).speed(speed).status(AgentStatus.IDLE).build()
+            Agent.create(name, player, loc, x, y, speed)
         ));
     }
 }

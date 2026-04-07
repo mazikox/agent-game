@@ -14,6 +14,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
 import java.util.Optional;
@@ -46,12 +47,10 @@ class AgentThinkingServiceTest {
     void shouldCoordinateThinkingProcessAndTriggerRedisSyncWhenMoving() {
         // Given
         UUID agentId = UUID.randomUUID();
-        Agent agent = Agent.builder()
-                .id(agentId)
-                .name("Thinker")
-                .currentLocation(com.agentgierka.mmo.world.Location.builder().name("Test Location").build())
-                .status(AgentStatus.IDLE)
-                .build();
+        Agent agent = Agent.create("Thinker", null, 
+                com.agentgierka.mmo.world.Location.builder().name("Test Location").build(), 
+                0, 0, 1);
+        ReflectionTestUtils.setField(agent, "id", agentId);
 
         Thought thought = Thought.builder()
                 .targetX(100).targetY(200)

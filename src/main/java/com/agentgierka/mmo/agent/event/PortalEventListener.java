@@ -36,14 +36,13 @@ public class PortalEventListener {
             return;
         }
 
-        String name = agentService.findById(event.agentId()).getName();
-        log.info("Checking for portals for agent {} at {} ({}, {})", name, event.location().getName(), event.x(), event.y());
+        log.info("Checking for portals for agent {} at {} ({}, {})", event.agentName(), event.location().getName(), event.x(), event.y());
 
         // Check the database for any portal at these coordinates using Location ID for robustness
         portalRepository.findBySourceLocationIdAndSourceXAndSourceY(event.location().getId(), event.x(), event.y())
                 .ifPresentOrElse(portal -> {
                     log.info("Portal found! Triggering teleportation for agent {} to {}", 
-                             name, portal.getTargetLocation().getName());
+                             event.agentName(), portal.getTargetLocation().getName());
                     
                     agentService.teleportTo(
                             event.agentId(),
