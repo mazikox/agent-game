@@ -97,7 +97,10 @@ private void executeAfterCommit(Runnable action) {
 
 ## 🟠 Wysokie (High)
 
-### H1. `Agent` — encja JPA z `@Setter(AccessLevel.PROTECTED)` łamana przez `@Builder`
+### H1. [ZROBIONE] `Agent — encja JPA z @Setter(AccessLevel.PROTECTED)` łamana przez `@Builder`
+
+> [!TIP]
+> Do pełnej hermetyzacji domeny dodano `@Builder(access = AccessLevel.PRIVATE)` oraz ograniczono widoczność konstruktorów (`@AllArgsConstructor(access = AccessLevel.PRIVATE)`). Jedynym publicznym punktem wejścia jest teraz metoda fabrykancka `create()`.
 
 **Plik:** [Agent.java](file:///c:/AgentGierka/src/main/java/com/agentgierka/mmo/agent/model/Agent.java#L13-L21)
 
@@ -112,7 +115,10 @@ To nie jest problem samego `@Builder`, ale fakt, że **nie kontrolujesz dostępu
 
 ---
 
-### H2. `GeminiBrainAdapter.think()` — zero error handling na odpowiedzi AI
+### H2. [ZROBIONE] `GeminiBrainAdapter.think()` — zero error handling na odpowiedzi AI
+
+> [!TIP]
+> Wprowadzono wielowarstwową obsługę błędów: try-catch dla API, null-safety dla odpowiedzi oraz "Hallucination Guard" walidujący współrzędne AI względem mapy. W razie błędu agent bezpiecznie przechodzi w stan IDLE.
 
 **Plik:** [GeminiBrainAdapter.java](file:///c:/AgentGierka/src/main/java/com/agentgierka/mmo/ai/adapter/GeminiBrainAdapter.java#L79-L82)
 
@@ -150,7 +156,10 @@ public Thought think(Perception perception) {
 
 ---
 
-### H3. `AgentThinkingService.processThinking()` — NPE na `getCurrentLocation()`
+### H3. [ZROBIONE] `AgentThinkingService.processThinking()` — NPE na `getCurrentLocation()`
+
+> [!TIP]
+> Dodano Guard Clause sprawdzający obecność lokacji zaraz po pobraniu agenta z bazy. Zapobiega to przerwaniu procesu myślenia błędem NPE dla nowych agentów.
 
 **Plik:** [AgentThinkingService.java](file:///c:/AgentGierka/src/main/java/com/agentgierka/mmo/ai/service/AgentThinkingService.java#L38-L48)
 
@@ -170,7 +179,10 @@ if (agent.getCurrentLocation() == null) {
 
 ---
 
-### H4. `PortalEventListener.onAgentArrived()` — niepotrzebne query do DB (N+1 potencjał)
+### H4. [ZROBIONE] `PortalEventListener.onAgentArrived()` — niepotrzebne query do DB (N+1 potencjał)
+
+> [!TIP]
+> Nazwa agenta (`agentName`) została dodana bezpośrednio do rekordu `AgentArrivedEvent`. Listener korzysta z niej bez dopytywania bazy danych, co znacząco redukuje operacje I/O.
 
 **Plik:** [PortalEventListener.java](file:///c:/AgentGierka/src/main/java/com/agentgierka/mmo/agent/event/PortalEventListener.java#L39)
 
@@ -198,9 +210,12 @@ public record AgentArrivedEvent(
 
 ---
 
-### H5. Brak walidacji `@RequestBody` w kontrolerach
+### H5. Brak walidacji `@RequestBody` w kontrolerach [ZROBIONE]
 
-**Plik:** [AgentController.java](file:///c:/AgentGierka/src/main/java/com/agentgierka/mmo/agent/web/AgentController.java#L57-L63)
+> [!TIP]
+> Wprowadzono dedykowane rekordy Request DTO (`AssignGoalRequest`, `MoveRequest`, `UpdateStatusRequest`) z pełną walidacją JSR-303. Błędy walidacji są teraz obsługiwane centralnie i zwracają kod 400.
+
+**Plik:** [AgentController.java](file:///c:/AgentGierka/src/main/java/com/agentgierka/mmo/agent/web/AgentController.java)
 
 ```java
 @PostMapping("/{id}/goal")
@@ -222,7 +237,10 @@ public record AssignGoalRequest(
 
 ## 🟡 Średnie (Medium)
 
-### M1. `AgentDto` — `@Data` zamiast `record`
+### M1. [ZROBIONE] `AgentDto` — `@Data` zamiast `record`
+
+> [!TIP]
+> Przekształcono `AgentDto` w natywny rekord Javy. Zapewnia to niemutowalność obiektów transferu danych (DTO) oraz czystszą składnię, zgodnie z najlepszymi praktykami nowoczesnej Javy i Springa.
 
 **Plik:** [AgentDto.java](file:///c:/AgentGierka/src/main/java/com/agentgierka/mmo/agent/web/dto/AgentDto.java)
 
@@ -261,43 +279,26 @@ CORS jest konfigurowany **dwukrotnie** — raz w `WebConfig.addCorsMappings()` i
 Spring Security CORS ma priorytet, więc `WebConfig` jest de facto **martwy kod**.
 
 **Rekomendacja:** Usuń `WebConfig` albo ujednolić — zostaw jedną konfigurację w `SecurityConfig`.
+**Status:** ✅ Rozwiązane (WebConfig usunięty, konfiguracja ujednolicona w SecurityConfig).
 
 ---
 
-### M4. `GameEngine` — brak timeout/limit na Virtual Threads
+### M4. [ZROBIONE] `GameEngine` — brak timeout/limit na Virtual Threads
 
-**Plik:** [GameEngine.java](file:///c:/AgentGierka/src/main/java/com/agentgierka/mmo/engine/GameEngine.java#L48-L62)
+> [!TIP]
+> Zaimplementowano natywne wsparcie dla Virtual Threads w Spring Boot 4. Proces ruchu agentów został zrównoleglony za pomocą `CompletableFuture.runAsync()`, a bezpieczeństwo czasowe zapewnia `CompletableFuture.allOf(...).get(timeout)`, który przerywa czekanie po czasie zdefiniowanym w `game.engine.tick-timeout`.
 
-```java
-try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
-    for (AgentWorldState state : activeAgents) {
-        executor.submit(() -> { ... });
-    }
-}
-```
+**Plik:** [GameEngine.java](file:///c:/AgentGierka/src/main/java/com/agentgierka/mmo/engine/GameEngine.java)
 
-`try-with-resources` na `ExecutorService` czeka na zakończenie **wszystkich** tasków. Jeśli `finalizeMovement()` zablokuje się (np. deadlock na DB), cały engine się zatrzyma na wieki — scheduler nie wywoła następnego `tick()`.
-
-**Rekomendacja:** Dodaj timeout:
-```java
-executor.close(); // try-with-resources does this
-// Alternatywnie: executor.awaitTermination(5, TimeUnit.SECONDS);
-```
-Lub użyj `StructuredTaskScope` (Java 25 preview):
-```java
-try (var scope = new StructuredTaskScope.ShutdownOnFailure()) {
-    for (AgentWorldState state : activeAgents) {
-        scope.fork(() -> { processAgent(state); return null; });
-    }
-    scope.joinUntil(Instant.now().plusSeconds(5));
-}
-```
+> [!NOTE]
+> Rozwiązano poprzez migrację na natywne Virtual Threads (Spring Boot 4) oraz zastosowanie `CompletableFuture.allOf(...).get(timeout)`. Zapewnia to, że nawet przy zawieszeniu się logiki pojedynczego agenta, silnik gry nie zostanie zablokowany i przejdzie do kolejnego cyklu (tick) po upływie zdefiniowanego czasu.
 
 ---
 
-### M5. `AgentStats` — Javadoc łamie zasadę Self-documenting Code
+### M5. [ZROBIONE] `AgentStats` — Javadoc łamie zasadę Self-documenting Code
 
-**Plik:** [AgentStats.java](file:///c:/AgentGierka/src/main/java/com/agentgierka/mmo/agent/model/AgentStats.java)
+> [!TIP]
+> Usunięto nadmiarowy i błędny Javadoc, który podawał nieprawidłowy typ zwracany. Kod jest teraz zgodny z zasadą Self-documenting Code.
 
 Z reguł projektu:
 > Stosujemy zasadę Self-documenting Code. Unikamy zbędnych komentarzy opisujących oczywiste działanie.
@@ -316,9 +317,10 @@ public AgentStats takeDamage(int amount) {
 
 ---
 
-### M6. `GoalAssignedListener` — FQCN import zamiast normalnego
+### M6. [ZROBIONE] `GoalAssignedListener` — FQCN import zamiast normalnego
 
-**Plik:** [GoalAssignedListener.java](file:///c:/AgentGierka/src/main/java/com/agentgierka/mmo/ai/listener/GoalAssignedListener.java#L24)
+> [!TIP]
+> Skrócono pełne ścieżki klasowe (FQCN) do standardowych importów, co poprawiło czytelność klasy `GoalAssignedListener`.
 
 ```java
 private final com.agentgierka.mmo.agent.service.AgentService agentService;
@@ -330,7 +332,10 @@ Pełna ścieżka jako typ pola — wygląda na efekt automatycznego rozwiązywan
 
 ---
 
-### M7. `Agent.strength` / `Agent.dexterity` — osierocone pola
+### M7. [ZROBIONE] `Agent.strength` / `Agent.dexterity` — osierocone pola
+
+> [!TIP]
+> Zweryfikowano strukturę modelu `Agent` i potwierdzono usunięcie nieużywanych pól na rzecz dedykowanej klasy `AgentStats`.
 
 **Plik:** [Agent.java](file:///c:/AgentGierka/src/main/java/com/agentgierka/mmo/agent/model/Agent.java#L42-L43)
 

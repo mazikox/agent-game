@@ -6,8 +6,10 @@ import com.agentgierka.mmo.world.exception.LocationNotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 
 import java.time.LocalDateTime;
 
@@ -54,6 +56,22 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleAccessDenied(org.springframework.security.access.AccessDeniedException ex) {
         log.warn("Access denied: {}", ex.getMessage());
         return buildResponse("FORBIDDEN", "Access denied.", HttpStatus.FORBIDDEN);
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ErrorResponse> handleValidationException(MethodArgumentNotValidException ex) {
+        String details = ex.getBindingResult().getFieldErrors().stream()
+                .map(error -> error.getField() + ": " + error.getDefaultMessage())
+                .findFirst()
+                .orElse(ex.getMessage());
+        log.warn("Validation failed: {}", details);
+        return buildResponse("VALIDATION_ERROR", details, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidJson(HttpMessageNotReadableException ex) {
+        log.warn("Invalid request format: {}", ex.getMessage());
+        return buildResponse("INVALID_REQUEST_FORMAT", "Invalid request format or data values.", HttpStatus.BAD_REQUEST);
     }
 
     @ExceptionHandler(Exception.class)

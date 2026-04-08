@@ -10,7 +10,9 @@ import com.agentgierka.mmo.player.Player;
 import com.agentgierka.mmo.player.PlayerRepository;
 import com.agentgierka.mmo.ai.port.Brain;
 import com.agentgierka.mmo.engine.EngineControl;
+import com.agentgierka.mmo.agent.web.dto.MoveRequest;
 import com.agentgierka.mmo.world.*;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -68,6 +70,8 @@ class AgentMovementE2ETest {
     @MockitoBean
     private Brain brain;
 
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
     @BeforeEach
     void setup() {
         engineControl.setReady(true);
@@ -100,10 +104,11 @@ class AgentMovementE2ETest {
         when(agentWorldStateRepository.findAllActive()).thenReturn(List.of(initialState));
 
         // 2. ACT: Trigger Movement via API
+        MoveRequest moveRequest = new MoveRequest(2, 2);
         mockMvc.perform(post("/api/agents/" + agentId + "/move")
                 .with(user("ExplorerPlayer"))
-                .param("x", "2")
-                .param("y", "2"))
+                .contentType("application/json")
+                .content(objectMapper.writeValueAsString(moveRequest)))
                 .andExpect(status().isOk());
 
         // 3. PROCESS: Tick 1 (Move to 1, 1)

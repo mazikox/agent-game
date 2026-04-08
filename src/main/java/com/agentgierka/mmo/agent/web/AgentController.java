@@ -1,9 +1,9 @@
 package com.agentgierka.mmo.agent.web;
 
-import com.agentgierka.mmo.agent.model.AgentStatus;
 import com.agentgierka.mmo.agent.service.AgentService;
-import com.agentgierka.mmo.agent.web.dto.AgentDto;
+import com.agentgierka.mmo.agent.web.dto.*;
 import com.agentgierka.mmo.agent.web.mapper.AgentMapper;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -48,27 +48,28 @@ public class AgentController {
      */
     @PostMapping("/{id}/move")
     @PreAuthorize("@agentSecurity.isOwner(#id)")
-    public AgentDto move(@PathVariable("id") UUID id, @RequestParam("x") Integer x, @RequestParam("y") Integer y) {
-        var agent = agentService.moveTo(id, x, y);
-        log.info("Agent {} moving to ({}, {})", agent.getName(), x, y);
+    public AgentDto move(@PathVariable("id") UUID id, @Valid @RequestBody MoveRequest request) {
+        var agent = agentService.moveTo(id, request.x(), request.y());
+        log.info("Agent {} moving to ({}, {})", agent.getName(), request.x(), request.y());
         return agentMapper.toDto(agent);
     }
 
     @PostMapping("/{id}/goal")
     @PreAuthorize("@agentSecurity.isOwner(#id)")
-    public AgentDto assignGoal(@PathVariable("id") UUID id, @RequestBody String goal) {
-        var agent = agentService.findById(id);
-        log.info("Assigning goal to agent {}: {}", agent.getName(), goal);
-        agentService.assignGoal(id, goal);
-        return agentMapper.toDto(agent);
+    public AgentDto assignGoal(@PathVariable("id") UUID id, @Valid @RequestBody AssignGoalRequest request) {
+        log.info("Assigning goal to agent {}: {}", id, request.goal());
+        agentService.assignGoal(id, request.goal());
+        
+        // Fix L3: fetch the agent AFTER assigning goal to return fresh state
+        var freshAgent = agentService.findById(id);
+        return agentMapper.toDto(freshAgent);
     }
 
     @PostMapping("/{id}/status")
     @PreAuthorize("@agentSecurity.isOwner(#id)")
-    public AgentDto updateStatus(@PathVariable("id") UUID id, @RequestParam("status") String status, @RequestParam("description") String description) {
-        log.info("Updating agent {} status to {}: {}", id, status, description);
-        AgentStatus agentStatus = AgentStatus.valueOf(status.toUpperCase());
-        return agentMapper.toDto(agentService.updateStatus(id, agentStatus, description));
+    public AgentDto updateStatus(@PathVariable("id") UUID id, @Valid @RequestBody UpdateStatusRequest request) {
+        log.info("Updating agent {} status to {}: {}", id, request.status(), request.description());
+        return agentMapper.toDto(agentService.updateStatus(id, request.status(), request.description()));
     }
 
     @PostMapping("/{id}/interrupt")

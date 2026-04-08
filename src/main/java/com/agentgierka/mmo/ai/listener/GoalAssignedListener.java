@@ -2,6 +2,7 @@ package com.agentgierka.mmo.ai.listener;
 
 import com.agentgierka.mmo.agent.event.GoalAssignedEvent;
 import com.agentgierka.mmo.ai.service.AgentThinkingService;
+import com.agentgierka.mmo.agent.service.AgentService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -21,7 +22,7 @@ import org.springframework.transaction.event.TransactionalEventListener;
 public class GoalAssignedListener {
 
     private final AgentThinkingService agentThinkingService;
-    private final com.agentgierka.mmo.agent.service.AgentService agentService;
+    private final AgentService agentService;
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     @Transactional(propagation = Propagation.REQUIRES_NEW)

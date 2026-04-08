@@ -32,6 +32,10 @@ public class AgentThinkingService {
         Agent agent = agentRepository.findById(agentId)
                 .orElseThrow(() -> new AgentNotFoundException(agentId.toString()));
 
+        if (agent.getCurrentLocation() == null) {
+            log.warn("Agent {} has no location assigned. Skipping thinking process.", agent.getName());
+            return;
+        }
 
         log.info("Agent {} is thinking about goal: '{}'", agent.getName(), agent.getGoal());
 

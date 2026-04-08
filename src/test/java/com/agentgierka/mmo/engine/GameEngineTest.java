@@ -8,15 +8,17 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentMatchers;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.core.task.AsyncTaskExecutor;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -32,12 +34,27 @@ class GameEngineTest {
     @Mock
     private EngineControl engineControl;
 
-    @InjectMocks
+    @Mock
+    private AsyncTaskExecutor taskExecutor;
+
     private GameEngine gameEngine;
 
     @BeforeEach
     void setUp() {
         lenient().when(engineControl.isReady()).thenReturn(true);
+        // Mock taskExecutor to run synchronously for unit tests to avoid race conditions
+        lenient().doAnswer(invocation -> {
+            Runnable task = invocation.getArgument(0);
+            return CompletableFuture.runAsync(task);
+        }).when(taskExecutor).execute(any(Runnable.class));
+
+        gameEngine = new GameEngine(
+                agentWorldStateRepository,
+                agentPersistenceService,
+                engineControl,
+                taskExecutor,
+                Duration.ofSeconds(5)
+        );
     }
 
     @Test

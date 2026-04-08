@@ -6,6 +6,8 @@ import com.agentgierka.mmo.player.Player;
 import com.agentgierka.mmo.player.PlayerRepository;
 import com.agentgierka.mmo.world.Location;
 import com.agentgierka.mmo.world.LocationRepository;
+import com.agentgierka.mmo.agent.web.dto.MoveRequest;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -41,6 +43,8 @@ class AgentOwnershipIntegrationTest {
     @Autowired
     private LocationRepository locationRepository;
 
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
     private UUID ownerAgentId;
 
     @BeforeEach
@@ -71,20 +75,22 @@ class AgentOwnershipIntegrationTest {
     @Test
     @DisplayName("Should allow movement if user is the owner")
     void shouldAllowMovementForOwner() throws Exception {
+        MoveRequest moveRequest = new MoveRequest(10, 10);
         mockMvc.perform(post("/api/agents/" + ownerAgentId + "/move")
                         .with(user("ownerUser"))
-                        .param("x", "10")
-                        .param("y", "10"))
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(moveRequest)))
                 .andExpect(status().isOk());
     }
 
     @Test
     @DisplayName("Should return 403 Forbidden if user is NOT the owner")
     void shouldReturn403ForNonOwner() throws Exception {
+        MoveRequest moveRequest = new MoveRequest(10, 10);
         mockMvc.perform(post("/api/agents/" + ownerAgentId + "/move")
                         .with(user("otherUser"))
-                        .param("x", "10")
-                        .param("y", "10"))
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(moveRequest)))
                 .andExpect(status().isForbidden());
     }
 }

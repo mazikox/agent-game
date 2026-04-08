@@ -14,8 +14,8 @@ import java.util.UUID;
 @Table(name = "agents")
 @Getter
 @Setter(AccessLevel.PROTECTED)
-@NoArgsConstructor
-@AllArgsConstructor
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
 @Builder(access = AccessLevel.PRIVATE)
 @ToString
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)

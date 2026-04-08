@@ -40,10 +40,6 @@ public class AgentStats {
                 .build();
     }
 
-    /**
-     * Logic for taking damage.
-     * @return true if still alive, false if died.
-     */
     public AgentStats takeDamage(int amount) {
         int newHp = Math.max(0, this.hp - amount);
         return this.toBuilder()
