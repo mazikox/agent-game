@@ -77,8 +77,9 @@ function GameContent({ handleLogout }) {
       if (updatedState.currentActionDescription) {
         addLog(updatedState.currentActionDescription);
       }
-    });
-
+    return () => {
+      console.log("Cleaning up WebSocket subscription for agent:", agent.id);
+      subscription.unsubscribe();
     };
   }, [agent?.id, connected, subscribeToAgent, addLog]);
 
