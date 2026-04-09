@@ -30,6 +30,7 @@ public class WorldStateSynchronizer {
                     .y(agent.getY())
                     .targetX(agent.getTargetX())
                     .targetY(agent.getTargetY())
+                    .currentLocationId(agent.getCurrentLocation() != null ? agent.getCurrentLocation().getId() : null)
                     .status(agent.getStatus())
                     .speed(agent.getSpeed())
                     .build();

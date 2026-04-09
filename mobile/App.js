@@ -8,44 +8,40 @@ import { TopBar } from './src/features/hud/TopBar';
 import { SideMenu } from './src/features/hud/SideMenu';
 import { agentApi } from './src/api/agentApi';
 import { LoginScreen } from './src/features/auth/LoginScreen';
+import { SocketProvider, useSocket } from './src/api/SocketContext';
 
-export default function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+/**
+ * Main Content component that uses the SocketContext.
+ */
+function GameContent({ handleLogout }) {
+  const { connected, connect, subscribeToAgent } = useSocket();
   const [agent, setAgent] = useState(null);
   const [location, setLocation] = useState(null);
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const addLog = (message) => {
+  const addLog = useCallback((message) => {
     const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     setLogs(prev => {
-      // Don't add duplicate consecutive logs
       if (prev.length > 0 && prev[prev.length - 1].message === message) return prev;
-      return [...prev, { time, message }].slice(-50); // Keep last 50
+      return [...prev, { time, message }].slice(-50);
     });
-  };
+  }, []);
 
-  const handleLoginSuccess = () => {
-    setIsAuthenticated(true);
-  };
-
-  const fetchAgentData = useCallback(async () => {
+  const fetchInitialData = useCallback(async () => {
     try {
       const agents = await agentApi.getAllAgents();
       if (agents && agents.length > 0) {
         const detailedAgent = await agentApi.getAgentDetails(agents[0].id);
         setAgent(detailedAgent);
         
-        // Update logs if action changed
         if (detailedAgent.currentActionDescription) {
           addLog(detailedAgent.currentActionDescription);
         }
 
-        if (!location || location.id !== detailedAgent.currentLocationId) {
-           const locDetails = await agentApi.getLocationDetails(detailedAgent.currentLocationId);
-           setLocation(locDetails);
-        }
+        const locDetails = await agentApi.getLocationDetails(detailedAgent.currentLocationId);
+        setLocation(locDetails);
         setError(null);
       }
     } catch (err) {
@@ -54,26 +50,66 @@ export default function App() {
     } finally {
       setLoading(false);
     }
-  }, [location]);
+  }, [addLog]);
 
+  // Initial data fetch and socket connection
   useEffect(() => {
-    if (!isAuthenticated) return;
-    fetchAgentData();
-    const interval = setInterval(fetchAgentData, 1000);
-    return () => clearInterval(interval);
-  }, [fetchAgentData, isAuthenticated]);
+    fetchInitialData();
+    connect();
+  }, [fetchInitialData, connect]);
+
+  // WebSocket Subscription
+  useEffect(() => {
+    if (!agent?.id || !connected) return;
+
+    console.log("Setting up WebSocket subscription for agent:", agent.id);
+    const subscription = subscribeToAgent(agent.id, (updatedState) => {
+      // Update agent state in real-time
+      setAgent(prev => ({
+        ...prev,
+        x: updatedState.x,
+        y: updatedState.y,
+        status: updatedState.status,
+        currentLocationId: updatedState.currentLocationId || prev?.currentLocationId,
+        currentActionDescription: updatedState.currentActionDescription
+      }));
+
+      if (updatedState.currentActionDescription) {
+        addLog(updatedState.currentActionDescription);
+      }
+    });
+
+    };
+  }, [agent?.id, connected, subscribeToAgent, addLog]);
+
+  // Effect to handle map/location change
+  useEffect(() => {
+    if (!agent?.currentLocationId) return;
+
+    const shouldFetch = !location || location.id !== agent.currentLocationId;
+    
+    if (shouldFetch) {
+      const updateLocation = async () => {
+        try {
+          console.log("Location changed! Fetching details for:", agent.currentLocationId);
+          const locDetails = await agentApi.getLocationDetails(agent.currentLocationId);
+          setLocation(locDetails);
+          addLog("Wkroczono do: " + locDetails.name);
+        } catch (err) {
+          console.error("Failed to fetch new location details:", err);
+        }
+      };
+      updateLocation();
+    }
+  }, [agent?.currentLocationId, location?.id, addLog]);
 
   const handleCommand = async (goal) => {
     if (agent) {
       addLog("> USER CMD: " + goal);
       await agentApi.sendGoal(agent.id, goal);
-      fetchAgentData();
+      // No need to fetch data again, WebSocket will push the update
     }
   };
-
-  if (!isAuthenticated) {
-    return <LoginScreen onLoginSuccess={handleLoginSuccess} />;
-  }
 
   if (loading && !agent) {
     return (
@@ -88,7 +124,6 @@ export default function App() {
     <View style={styles.container}>
       <StatusBar hidden />
       
-      {/* BACKGROUND LAYER - Functional Map */}
       <MapView 
         agentX={agent?.x || 0}
         agentY={agent?.y || 0}
@@ -98,21 +133,15 @@ export default function App() {
         locationName={location ? location.name : 'Unknown Realm'}
       />
 
-      {/* HUD LAYER */}
       <View style={[styles.hudOverlay, { pointerEvents: 'box-none' }]}>
         <SafeAreaView style={{ flex: 1, pointerEvents: 'box-none' }}>
-          
-          {/* HEADER LAYER */}
           <TopBar 
             gold={1575} 
             gems={28} 
             locationName={location ? location.name : 'Unknown Realm'} 
           />
 
-          {/* OVERLAPPING COMPONENTS */}
           <View style={[styles.contentContainer, { pointerEvents: 'box-none' }]}>
-            
-            {/* TOP LEFT: PROFILE */}
             <AgentProfile 
               name={agent?.name || 'Shadow-01'}
               level={agent?.level || 1}
@@ -127,10 +156,8 @@ export default function App() {
               currentAction={agent?.currentActionDescription}
             />
 
-            {/* MIDDLE RIGHT: 2-COLUMN MENU */}
             <SideMenu />
 
-            {/* BOTTOM LEFT / CENTER: AGENT CONSOLE */}
             <View style={[styles.bottomLeftContainer, { pointerEvents: 'box-none' }]}>
               <AgentConsole 
                 agentId={agent?.id} 
@@ -138,17 +165,34 @@ export default function App() {
                 onCommandSent={handleCommand} 
               />
             </View>
-
           </View>
         </SafeAreaView>
       </View>
 
-      {error && (
+      {!connected && (
         <View style={styles.onlineBadge}>
-          <Text style={styles.onlineText}>Offline</Text>
+          <Text style={styles.onlineText}>Reconnecting...</Text>
         </View>
       )}
     </View>
+  );
+}
+
+export default function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  const handleLoginSuccess = () => {
+    setIsAuthenticated(true);
+  };
+
+  if (!isAuthenticated) {
+    return <LoginScreen onLoginSuccess={handleLoginSuccess} />;
+  }
+
+  return (
+    <SocketProvider>
+       <GameContent />
+    </SocketProvider>
   );
 }
 

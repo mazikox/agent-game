@@ -44,6 +44,8 @@ public class AgentService {
         agent.assignGoal(goal, initialQuota);
         agentRepository.save(agent);
 
+        worldStateSynchronizer.syncMovementAfterCommit(agent);
+
         eventPublisher.publishEvent(new GoalAssignedEvent(agentId));
     }
 

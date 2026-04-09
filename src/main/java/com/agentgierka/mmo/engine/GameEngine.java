@@ -1,11 +1,13 @@
 package com.agentgierka.mmo.engine;
 
+import com.agentgierka.mmo.agent.event.AgentStateUpdatedEvent;
 import com.agentgierka.mmo.agent.model.AgentWorldState;
 import com.agentgierka.mmo.agent.repository.AgentWorldStateRepository;
 import com.agentgierka.mmo.agent.service.AgentPersistenceService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.core.task.AsyncTaskExecutor;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -28,17 +30,20 @@ public class GameEngine {
     private final AgentPersistenceService agentPersistenceService;
     private final EngineControl engineControl;
     private final AsyncTaskExecutor taskExecutor;
+    private final ApplicationEventPublisher eventPublisher;
     private final Duration tickTimeout;
 
     public GameEngine(AgentWorldStateRepository agentWorldStateRepository,
                       AgentPersistenceService agentPersistenceService,
                       EngineControl engineControl,
                       @Qualifier("applicationTaskExecutor") AsyncTaskExecutor taskExecutor,
+                      ApplicationEventPublisher eventPublisher,
                       @Value("${game.engine.tick-timeout:5s}") Duration tickTimeout) {
         this.agentWorldStateRepository = agentWorldStateRepository;
         this.agentPersistenceService = agentPersistenceService;
         this.engineControl = engineControl;
         this.taskExecutor = taskExecutor;
+        this.eventPublisher = eventPublisher;
         this.tickTimeout = tickTimeout;
     }
 
@@ -76,13 +81,17 @@ public class GameEngine {
 
     private void processAgent(AgentWorldState state) {
         try {
-            if (state.updatePosition()) {
+            boolean reachedTarget = state.updatePosition();
+            if (reachedTarget) {
                 String name = state.getAgentName() != null ? state.getAgentName() : state.getAgentId().toString();
                 log.info("Agent {} successfully reached target at ({}, {})", name, state.getX(), state.getY());
                 agentPersistenceService.finalizeMovement(state);
             } else {
                 agentWorldStateRepository.updateAtomic(state);
             }
+            
+            // Broadcast update via WebSocket Adapter (through internal event)
+            eventPublisher.publishEvent(new AgentStateUpdatedEvent(state));
         } catch (Exception e) {
             log.error("Failed to process agent {}", state.getAgentId(), e);
         }

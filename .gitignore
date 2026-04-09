@@ -34,3 +34,6 @@ build/
 .env
 
 *.log
+tmp/
+mobile/node_modules/
+mobile/.expo/

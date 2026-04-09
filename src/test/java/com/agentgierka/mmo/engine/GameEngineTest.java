@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.core.task.AsyncTaskExecutor;
 
 import java.time.Duration;
@@ -37,6 +38,9 @@ class GameEngineTest {
     @Mock
     private AsyncTaskExecutor taskExecutor;
 
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
+
     private GameEngine gameEngine;
 
     @BeforeEach
@@ -53,6 +57,7 @@ class GameEngineTest {
                 agentPersistenceService,
                 engineControl,
                 taskExecutor,
+                eventPublisher,
                 Duration.ofSeconds(5)
         );
     }

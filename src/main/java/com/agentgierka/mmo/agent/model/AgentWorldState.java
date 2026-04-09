@@ -27,6 +27,7 @@ public class AgentWorldState implements Serializable {
     private Integer y;
     private Integer targetX;
     private Integer targetY;
+    private UUID currentLocationId;
     private AgentStatus status;
     
     @Builder.Default

@@ -4,7 +4,8 @@ import { authService } from './authService';
 // The backend is running at localhost:8080. 
 // For Expo Web, we can use localhost. 
 // For a physical device, we would need the local IP (e.g., 192.168.1.x).
-const API_BASE_URL = 'http://localhost:8080/api';
+export const BASE_URL = 'http://localhost:8080';
+export const API_BASE_URL = `${BASE_URL}/api`;
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -54,9 +55,7 @@ export const agentApi = {
    * Sends a high-level goal to the agent's AI brain.
    */
   sendGoal: async (id, goal) => {
-    const response = await apiClient.post(`/agents/${id}/goal`, goal, {
-      headers: { 'Content-Type': 'text/plain' }
-    });
+    const response = await apiClient.post(`/agents/${id}/goal`, { goal });
     return response.data;
   },
 };

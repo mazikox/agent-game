@@ -81,6 +81,8 @@ public class Agent {
         this.goal = newGoal;
         this.remainingThinkingSteps = quota;
         this.currentTask = "Waiting for goal analysis...";
+        this.targetX = null;
+        this.targetY = null;
         this.status = AgentStatus.IDLE;
     }
 
