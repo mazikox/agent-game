@@ -17,16 +17,16 @@ import lombok.*;
 public class AgentStats {
 
     @Column(name = "hp")
-    private Integer hp;
+    private int hp;
 
     @Column(name = "max_hp")
-    private Integer maxHp;
+    private int maxHp;
 
     @Column(name = "experience")
-    private Integer experience;
+    private int experience;
 
     @Column(name = "level")
-    private Integer level;
+    private int level;
 
     /**
      * Creates initial stats for a new agent.
@@ -67,11 +67,12 @@ public class AgentStats {
 
     private AgentStats levelUp() {
         int nextThreshold = getExpThreshold();
+        int newMaxHp = this.maxHp + 20;
         return this.toBuilder()
                 .level(this.level + 1)
                 .experience(this.experience - nextThreshold)
-                .maxHp(this.maxHp + 20)
-                .hp(this.maxHp + 20) // Full heal on level up
+                .maxHp(newMaxHp)
+                .hp(newMaxHp) // Full heal = new max
                 .build();
     }
 

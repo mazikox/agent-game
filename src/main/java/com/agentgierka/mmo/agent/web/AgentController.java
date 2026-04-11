@@ -17,7 +17,7 @@ import java.util.stream.Collectors;
  * REST Controller for Master-to-Agent interactions.
  */
 @RestController
-@RequestMapping("/api/agents")
+@RequestMapping("/api/v1/agents")
 @RequiredArgsConstructor
 @Slf4j
 public class AgentController {
@@ -47,7 +47,7 @@ public class AgentController {
      * Requests the agent to move to a specific location.
      */
     @PostMapping("/{id}/move")
-    @PreAuthorize("@agentSecurity.isOwner(#id)")
+    @PreAuthorize("@agentSecurity.isOwner(#id, authentication.name)")
     public AgentDto move(@PathVariable("id") UUID id, @Valid @RequestBody MoveRequest request) {
         var agent = agentService.moveTo(id, request.x(), request.y());
         log.info("Agent {} moving to ({}, {})", agent.getName(), request.x(), request.y());
@@ -55,7 +55,7 @@ public class AgentController {
     }
 
     @PostMapping("/{id}/goal")
-    @PreAuthorize("@agentSecurity.isOwner(#id)")
+    @PreAuthorize("@agentSecurity.isOwner(#id, authentication.name)")
     public AgentDto assignGoal(@PathVariable("id") UUID id, @Valid @RequestBody AssignGoalRequest request) {
         log.info("Assigning goal to agent {}: {}", id, request.goal());
         agentService.assignGoal(id, request.goal());
@@ -66,14 +66,14 @@ public class AgentController {
     }
 
     @PostMapping("/{id}/status")
-    @PreAuthorize("@agentSecurity.isOwner(#id)")
+    @PreAuthorize("@agentSecurity.isOwner(#id, authentication.name)")
     public AgentDto updateStatus(@PathVariable("id") UUID id, @Valid @RequestBody UpdateStatusRequest request) {
         log.info("Updating agent {} status to {}: {}", id, request.status(), request.description());
         return agentMapper.toDto(agentService.updateStatus(id, request.status(), request.description()));
     }
 
     @PostMapping("/{id}/interrupt")
-    @PreAuthorize("@agentSecurity.isOwner(#id)")
+    @PreAuthorize("@agentSecurity.isOwner(#id, authentication.name)")
     public AgentDto interrupt(@PathVariable("id") UUID id) {
         log.info("Interrupting agent {}", id);
         agentService.interruptAgent(id);

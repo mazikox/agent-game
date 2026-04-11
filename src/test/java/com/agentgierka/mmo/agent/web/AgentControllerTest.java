@@ -15,6 +15,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -32,6 +33,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc(addFilters = false)
 @ActiveProfiles("test")
 @Transactional
+@WithMockUser
 class AgentControllerTest {
 
     @Autowired
@@ -64,7 +66,7 @@ class AgentControllerTest {
         agentId = agent.getId();
 
         // Ensure security check always passes during validation testing
-        when(agentSecurity.isOwner(any())).thenReturn(true);
+        when(agentSecurity.isOwner(any(), any())).thenReturn(true);
     }
 
     @Test
@@ -72,7 +74,7 @@ class AgentControllerTest {
     void assignGoal_Success() throws Exception {
         AssignGoalRequest request = new AssignGoalRequest("New Mission");
 
-        mockMvc.perform(post("/api/agents/{id}/goal", agentId)
+        mockMvc.perform(post("/api/v1/agents/{id}/goal", agentId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
@@ -84,7 +86,7 @@ class AgentControllerTest {
     void assignGoal_ValidationFailure() throws Exception {
         AssignGoalRequest request = new AssignGoalRequest("");
 
-        mockMvc.perform(post("/api/agents/{id}/goal", agentId)
+        mockMvc.perform(post("/api/v1/agents/{id}/goal", agentId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
@@ -95,7 +97,7 @@ class AgentControllerTest {
     void move_ValidationFailure() throws Exception {
         MoveRequest request = new MoveRequest(-1, 50);
 
-        mockMvc.perform(post("/api/agents/{id}/move", agentId)
+        mockMvc.perform(post("/api/v1/agents/{id}/move", agentId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
@@ -106,7 +108,7 @@ class AgentControllerTest {
     void updateStatus_InvalidStatus() throws Exception {
         String invalidJson = "{\"status\": \"INVALID_STATUS\", \"description\": \"Test\"}";
 
-        mockMvc.perform(post("/api/agents/{id}/status", agentId)
+        mockMvc.perform(post("/api/v1/agents/{id}/status", agentId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(invalidJson))
                 .andExpect(status().isBadRequest());

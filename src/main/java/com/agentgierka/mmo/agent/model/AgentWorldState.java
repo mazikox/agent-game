@@ -40,6 +40,21 @@ public class AgentWorldState implements Serializable {
         this.version++;
     }
 
+    public static AgentWorldState fromAgent(Agent agent) {
+        return AgentWorldState.builder()
+                .agentId(agent.getId())
+                .agentName(agent.getName())
+                .x(agent.getX())
+                .y(agent.getY())
+                .targetX(agent.getTargetX())
+                .targetY(agent.getTargetY())
+                .currentLocationId(agent.getCurrentLocation() != null ? agent.getCurrentLocation().getId() : null)
+                .status(agent.getStatus())
+                .speed(agent.getSpeed())
+                .version(0)
+                .build();
+    }
+
     @JsonIgnore
     public boolean updatePosition() {
         if (targetX == null || targetY == null || isAtTarget()) {

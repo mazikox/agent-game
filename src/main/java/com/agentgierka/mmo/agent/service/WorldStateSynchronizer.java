@@ -7,6 +7,7 @@ import com.agentgierka.mmo.agent.model.MovementType;
 import com.agentgierka.mmo.agent.repository.AgentWorldStateRepository;
 import com.agentgierka.mmo.world.Location;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -14,6 +15,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 
 import java.util.UUID;
 
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class WorldStateSynchronizer {
@@ -54,6 +56,7 @@ public class WorldStateSynchronizer {
                 }
             });
         } else {
+            log.warn("No active transaction — executing synchronously. This may cause state inconsistency.");
             action.run();
         }
     }

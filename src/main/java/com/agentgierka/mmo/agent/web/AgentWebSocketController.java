@@ -29,6 +29,7 @@ public class AgentWebSocketController {
         log.debug("Broadcasting update for agent {} to {}", state.getAgentId(), destination);
         
         messagingTemplate.convertAndSend(destination, state);
+    }
     
     @EventListener
     public void onAgentArrived(AgentArrivedEvent event) {

@@ -2,6 +2,7 @@ package com.agentgierka.mmo.security;
 
 import com.agentgierka.mmo.agent.repository.AgentRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 
@@ -13,12 +14,11 @@ public class AgentSecurity {
 
     private final AgentRepository agentRepository;
 
-    public boolean isOwner(UUID agentId) {
-        if (agentId == null || SecurityContextHolder.getContext().getAuthentication() == null) {
+    @Cacheable(value = "agentOwner", key = "#agentId + '_' + #currentUsername", unless = "#result == false")
+    public boolean isOwner(UUID agentId, String currentUsername) {
+        if (agentId == null || currentUsername == null) {
             return false;
         }
-        
-        String currentUsername = SecurityContextHolder.getContext().getAuthentication().getName();
         
         return agentRepository.findById(agentId)
                 .map(agent -> {

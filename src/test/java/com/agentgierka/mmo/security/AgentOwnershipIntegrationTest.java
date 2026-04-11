@@ -76,7 +76,7 @@ class AgentOwnershipIntegrationTest {
     @DisplayName("Should allow movement if user is the owner")
     void shouldAllowMovementForOwner() throws Exception {
         MoveRequest moveRequest = new MoveRequest(10, 10);
-        mockMvc.perform(post("/api/agents/" + ownerAgentId + "/move")
+        mockMvc.perform(post("/api/v1/agents/" + ownerAgentId + "/move")
                         .with(user("ownerUser"))
                         .contentType("application/json")
                         .content(objectMapper.writeValueAsString(moveRequest)))
@@ -87,7 +87,7 @@ class AgentOwnershipIntegrationTest {
     @DisplayName("Should return 403 Forbidden if user is NOT the owner")
     void shouldReturn403ForNonOwner() throws Exception {
         MoveRequest moveRequest = new MoveRequest(10, 10);
-        mockMvc.perform(post("/api/agents/" + ownerAgentId + "/move")
+        mockMvc.perform(post("/api/v1/agents/" + ownerAgentId + "/move")
                         .with(user("otherUser"))
                         .contentType("application/json")
                         .content(objectMapper.writeValueAsString(moveRequest)))

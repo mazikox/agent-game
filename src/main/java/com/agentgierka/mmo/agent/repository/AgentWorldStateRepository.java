@@ -72,7 +72,8 @@ public class AgentWorldStateRepository {
     private static final String ATOMIC_UPDATE_LUA =
             "local current = redis.call('GET', KEYS[1]) " +
             "if not current then return -1 end " +
-            "if current:find('\"version\":' .. ARGV[1], 1, true) then " +
+            "local data = cjson.decode(current) " +
+            "if data.version == tonumber(ARGV[1]) then " +
             "  redis.call('SET', KEYS[1], ARGV[2]) " +
             "  if ARGV[3] == 'MOVING' then " +
             "    redis.call('SADD', KEYS[2], ARGV[4]) " +

@@ -82,11 +82,11 @@ class AuthControllerIntegrationTest {
                 .get("token").asText();
 
         // 3. Unauthorized access check (EXPECT 403)
-        mockMvc.perform(get("/api/agents"))
+        mockMvc.perform(get("/api/v1/agents"))
                 .andExpect(status().isUnauthorized());
 
         // 4. Authorized access check (EXPECT 200)
-        mockMvc.perform(get("/api/agents")
+        mockMvc.perform(get("/api/v1/agents")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk());
     }

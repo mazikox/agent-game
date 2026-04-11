@@ -19,7 +19,7 @@ import java.util.stream.Collectors;
  * Provides map layouts and teleportation portal locations.
  */
 @RestController
-@RequestMapping("/api/locations")
+@RequestMapping("/api/v1/locations")
 @RequiredArgsConstructor
 public class LocationController {
 
@@ -40,7 +40,7 @@ public class LocationController {
         LocationDto dto = locationMapper.toDto(location);
         
         // Populate portals for this source location
-        List<PortalDto> portals = portalRepository.findAllBySourceLocationId(id)
+        List<PortalDto> portals = portalRepository.findAllBySourceLocationIdWithTarget(id)
                 .stream()
                 .map(p -> PortalDto.builder()
                         .id(p.getId())

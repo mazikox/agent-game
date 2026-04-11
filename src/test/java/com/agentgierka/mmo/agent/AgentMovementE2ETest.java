@@ -105,7 +105,7 @@ class AgentMovementE2ETest {
 
         // 2. ACT: Trigger Movement via API
         MoveRequest moveRequest = new MoveRequest(2, 2);
-        mockMvc.perform(post("/api/agents/" + agentId + "/move")
+        mockMvc.perform(post("/api/v1/agents/" + agentId + "/move")
                 .with(user("ExplorerPlayer"))
                 .contentType("application/json")
                 .content(objectMapper.writeValueAsString(moveRequest)))

@@ -33,14 +33,14 @@ class SecurityIntegrationTest {
     @Test
     @DisplayName("Should return 401 when Authorization header is missing")
     void shouldReturn401WhenTokenIsMissing() throws Exception {
-        mockMvc.perform(get("/api/agents"))
+        mockMvc.perform(get("/api/v1/agents"))
                 .andExpect(status().isUnauthorized());
     }
 
     @Test
     @DisplayName("Should return 401 when Authorization header is malformed")
     void shouldReturn401WhenTokenIsMalformed() throws Exception {
-        mockMvc.perform(get("/api/agents")
+        mockMvc.perform(get("/api/v1/agents")
                         .header("Authorization", "Bearer not-a-valid-jwt-structure"))
                 .andExpect(status().isUnauthorized());
     }
@@ -53,7 +53,7 @@ class SecurityIntegrationTest {
                 .withExpiresAt(new Date(System.currentTimeMillis() + 100000))
                 .sign(Algorithm.HMAC256("completely-different-and-wrong-secret-key"));
 
-        mockMvc.perform(get("/api/agents")
+        mockMvc.perform(get("/api/v1/agents")
                         .header("Authorization", "Bearer " + tokenWithWrongSecret))
                 .andExpect(status().isUnauthorized());
     }
