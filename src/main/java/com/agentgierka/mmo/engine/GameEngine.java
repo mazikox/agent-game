@@ -88,10 +88,9 @@ public class GameEngine {
                 agentPersistenceService.finalizeMovement(state);
             } else {
                 agentWorldStateRepository.updateAtomic(state);
+                // Broadcast update only if movement is still in progress
+                eventPublisher.publishEvent(new AgentStateUpdatedEvent(state));
             }
-            
-            // Broadcast update via WebSocket Adapter (through internal event)
-            eventPublisher.publishEvent(new AgentStateUpdatedEvent(state));
         } catch (Exception e) {
             log.error("Failed to process agent {}", state.getAgentId(), e);
         }

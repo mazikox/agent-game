@@ -17,9 +17,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 import java.util.List;
+import java.time.LocalDateTime;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class AgentService {
 
     private final AgentRepository agentRepository;
@@ -104,6 +107,13 @@ public class AgentService {
     public Agent teleportTo(UUID agentId, com.agentgierka.mmo.world.Location location, Integer x, Integer y) {
         Agent agent = agentRepository.findById(agentId)
                 .orElseThrow(() -> new AgentNotFoundException(agentId.toString()));
+
+        // Cooldown check: prevent teleporting more than once every 5 seconds
+        if (agent.getLastTeleportAt() != null && 
+            agent.getLastTeleportAt().plusSeconds(5).isAfter(LocalDateTime.now())) {
+            log.warn("Teleportation blocked by cooldown for agent: {}", agent.getName());
+            return agent; 
+        }
 
         agent.teleport(location, x, y);
 

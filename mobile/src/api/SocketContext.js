@@ -59,6 +59,7 @@ export const SocketProvider = ({ children }) => {
     
     const subscription = stompClient.current.subscribe(topic, (message) => {
       const payload = JSON.parse(message.body);
+      console.log(`[Socket] Message from ${topic}:`, payload);
       onMessage(payload);
     });
 

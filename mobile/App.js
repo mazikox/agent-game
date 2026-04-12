@@ -64,19 +64,25 @@ function GameContent({ handleLogout }) {
 
     console.log("Setting up WebSocket subscription for agent:", agent.id);
     const subscription = subscribeToAgent(agent.id, (updatedState) => {
+      console.log(`[App] Received agent update:`, updatedState);
       // Update agent state in real-time
-      setAgent(prev => ({
-        ...prev,
-        x: updatedState.x,
-        y: updatedState.y,
-        status: updatedState.status,
-        currentLocationId: updatedState.currentLocationId || prev?.currentLocationId,
-        currentActionDescription: updatedState.currentActionDescription
-      }));
+      setAgent(prev => {
+        const nextLocId = updatedState.currentLocationId || prev?.currentLocationId;
+        return {
+          ...prev,
+          x: updatedState.x,
+          y: updatedState.y,
+          status: updatedState.status,
+          currentLocationId: nextLocId,
+          currentActionDescription: updatedState.currentActionDescription
+        };
+      });
 
       if (updatedState.currentActionDescription) {
         addLog(updatedState.currentActionDescription);
       }
+    });
+
     return () => {
       console.log("Cleaning up WebSocket subscription for agent:", agent.id);
       subscription.unsubscribe();
@@ -87,21 +93,33 @@ function GameContent({ handleLogout }) {
   useEffect(() => {
     if (!agent?.currentLocationId) return;
 
-    const shouldFetch = !location || location.id !== agent.currentLocationId;
+    let isCancelled = false;
+    const locId = agent.currentLocationId.toLowerCase();
+    const currentLocId = location?.id?.toLowerCase();
     
+    const shouldFetch = !location || currentLocId !== locId;
+    
+    console.log(`[MapSync] Checking location: Current=${currentLocId}, Target=${locId}, ShouldFetch=${shouldFetch}`);
+
     if (shouldFetch) {
       const updateLocation = async () => {
         try {
-          console.log("Location changed! Fetching details for:", agent.currentLocationId);
-          const locDetails = await agentApi.getLocationDetails(agent.currentLocationId);
-          setLocation(locDetails);
-          addLog("Wkroczono do: " + locDetails.name);
+          console.log("[MapSync] Location change detected! Fetching details for:", locId);
+          const locDetails = await agentApi.getLocationDetails(locId);
+          if (!isCancelled) {
+            setLocation(locDetails);
+            addLog("Wkroczono do: " + locDetails.name);
+          }
         } catch (err) {
-          console.error("Failed to fetch new location details:", err);
+          console.error("[MapSync] Failed to fetch new location details:", err);
         }
       };
       updateLocation();
     }
+
+    return () => {
+      isCancelled = true;
+    };
   }, [agent?.currentLocationId, location?.id, addLog]);
 
   const handleCommand = async (goal) => {

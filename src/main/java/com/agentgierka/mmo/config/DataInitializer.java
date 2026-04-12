@@ -71,22 +71,53 @@ public class DataInitializer implements CommandLineRunner {
                     .build();
             locationRepository.save(meadow);
 
-            // 3. Create a Portal from Forest(10,10) to Meadow(5,5)
-            Portal forestToMeadow = Portal.builder()
-                    .sourceLocation(forest)
-                    .sourceX(10)
-                    .sourceY(10)
-                    .targetLocation(meadow)
-                    .targetX(5)
-                    .targetY(5)
+            // 3. Create a third Location (Mine)
+            Location mine = Location.builder()
+                    .name("Deep Iron Mine")
+                    .description("A dark, echoing mine rich with iron ore and mysterious shadows.")
+                    .type(LocationType.MINE)
+                    .width(30)
+                    .height(30)
                     .build();
-            portalRepository.save(forestToMeadow);
+            locationRepository.save(mine);
 
-            // 4. Create a default Master Player
+            // 4. Create Bidirectional Portals
+
+            // Forest <-> Meadow
+            portalRepository.save(Portal.builder()
+                    .sourceLocation(forest).sourceX(10).sourceY(10)
+                    .targetLocation(meadow).targetX(6).targetY(6)
+                    .build());
+            portalRepository.save(Portal.builder()
+                    .sourceLocation(meadow).sourceX(5).sourceY(5)
+                    .targetLocation(forest).targetX(11).targetY(11)
+                    .build());
+
+            // Forest <-> Mine
+            portalRepository.save(Portal.builder()
+                    .sourceLocation(forest).sourceX(90).sourceY(90)
+                    .targetLocation(mine).targetX(6).targetY(6)
+                    .build());
+            portalRepository.save(Portal.builder()
+                    .sourceLocation(mine).sourceX(5).sourceY(5)
+                    .targetLocation(forest).targetX(89).targetY(89)
+                    .build());
+
+            // Meadow <-> Mine
+            portalRepository.save(Portal.builder()
+                    .sourceLocation(meadow).sourceX(40).sourceY(40)
+                    .targetLocation(mine).targetX(26).targetY(26)
+                    .build());
+            portalRepository.save(Portal.builder()
+                    .sourceLocation(mine).sourceX(25).sourceY(25)
+                    .targetLocation(meadow).targetX(41).targetY(41)
+                    .build());
+
+            // 5. Create a default Master Player
             Player master = Player.create("MasterAdmin", passwordEncoder.encode("admin123"));
             playerRepository.save(master);
 
-            // 5. Create a starting Agent using factory method
+            // 6. Create a starting Agent using factory method
             Agent scout = Agent.create(
                     "Shadow-01",
                     master,

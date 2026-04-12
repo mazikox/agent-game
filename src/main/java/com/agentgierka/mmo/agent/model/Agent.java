@@ -9,6 +9,7 @@ import lombok.*;
 
 import java.util.List;
 import java.util.UUID;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "agents")
@@ -60,6 +61,8 @@ public class Agent {
     private String currentTask;
 
     private String currentActionDescription;
+
+    private LocalDateTime lastTeleportAt;
 
     /**
      * Official factory method for creating new agents with guaranteed valid state.
@@ -133,6 +136,7 @@ public class Agent {
         this.targetY = null;
         this.status = AgentStatus.IDLE;
         this.currentActionDescription = "Teleported to " + location.getName();
+        this.lastTeleportAt = LocalDateTime.now();
     }
 
     public void updateStatus(AgentStatus newStatus, String description) {

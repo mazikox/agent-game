@@ -50,6 +50,7 @@ const PulseIcon = ({ children }) => {
 const MAP_ASSETS = {
   'Forest of Beginnings': require('../../../assets/maps/forest_of_beginnings.png'),
   'Azure Meadow': require('../../../assets/maps/azure_meadow.png'),
+  'Deep Iron Mine': require('../../../assets/maps/deep_iron_mine.png'),
   'default': require('../../../assets/rpg_map.png'),
 };
 
@@ -88,7 +89,13 @@ export const MapView = ({ agentX, agentY, mapWidth, mapHeight, portals = [], loc
 
   return (
     <View style={styles.container}>
-      <Animated.View style={[styles.boardWrapper, { opacity: fadeAnim }]}>
+      <Animated.View style={[
+        styles.boardWrapper, 
+        { 
+          opacity: fadeAnim,
+          aspectRatio: (mapWidth && mapHeight) ? mapWidth / mapHeight : 1
+        }
+      ]}>
         <Corner position="topLeft" />
         <Corner position="topRight" />
         <Corner position="bottomLeft" />
@@ -116,7 +123,7 @@ export const MapView = ({ agentX, agentY, mapWidth, mapHeight, portals = [], loc
                           <Atom size={20} color={theme.colors.primary} strokeWidth={2.5} />
                         </PulseIcon>
                         <Text style={styles.portalLabel}>
-                          {portal.targetLocationName || 'AZURE MEADOW'}
+                          {portal.targetLocationName}
                         </Text>
                     </View>
                 ))}
@@ -156,10 +163,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: -1,
+    padding: 10,
   },
   boardWrapper: {
-    width: '90%', // Slightly larger for better view
-    aspectRatio: 1, // Enforce square if map is 100x100
+    width: '100%',
+    maxWidth: '95%',
+    maxHeight: '75%', // Leaves space for HUD elements at bottom and top
     borderWidth: 2,
     borderColor: 'rgba(79, 209, 237, 0.4)',
     backgroundColor: '#000',
