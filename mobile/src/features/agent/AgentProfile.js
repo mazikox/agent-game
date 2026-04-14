@@ -1,75 +1,186 @@
 import React from 'react';
-import { View, Text, Image, StyleSheet } from 'react-native';
-import { theme } from '../../theme/theme';
+import { View, Text, Image, StyleSheet, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { theme } from '../../theme/theme';
 
-export const AgentProfile = ({ 
-  name = "Shadow-01", 
-  level = 1, 
-  hp = 100, 
-  maxHp = 100, 
-  stamina = 100, 
-  maxStamina = 100,
-  currentAction = "Waiting for orders...",
-  status = "IDLE",
-  x = 0,
-  y = 0,
-  mapWidth = 0,
-  mapHeight = 0,
-  currentTask = ""
-}) => {
+/**
+ * HUD LAYOUT CONFIGURATION
+ * Centralized constants for pixel-perfect adjustments.
+ */
+const HUD_CONFIG = {
+  PORTRAIT: {
+    SIZE: 115,
+    BORDER: 5,
+    OVERLAP_X: -25, // How much the portrait overlaps the bars
+  },
+  BARS: {
+    HEIGHT: 26,
+    SPACING: 10,
+    ICON_SCALE: 2.2, // Growth factor relative to bar height
+    ICON_OFFSET: -15, // Icon "plug" depth into the bar
+    SOCKET_PADDING: 32, // Where liquid starts in the frame
+  },
+  TEXT_SHADOW: {
+    textShadowColor: 'rgba(0, 0, 0, 0.9)',
+    textShadowOffset: { width: 2, height: 2 },
+    textShadowRadius: 6,
+  }
+};
+
+/**
+ * 1. WebBlendedImage Component
+ * FIX: Solves the 'Black Square' issue on Web.
+ * Standard React Native <Image /> on web wraps <img> in a <div>, 
+ * which breaks 'mixBlendMode' for some browser engines.
+ * This component uses native CSS backgrounds for perfect blending.
+ */
+const WebBlendedImage = ({ source, style, resizeMode = 'contain' }) => {
+  // Extract URI from require() or URI object
+  const imageUri = typeof source === 'number' ? Image.resolveAssetSource(source).uri : source.uri;
+
+  if (Platform.OS === 'web') {
+    return (
+      <View 
+        style={[
+          style,
+          {
+            backgroundImage: `url(${imageUri})`,
+            backgroundSize: resizeMode === 'contain' ? 'contain' : 'cover',
+            backgroundRepeat: 'no-repeat',
+            backgroundPosition: 'center',
+            // @ts-ignore
+            mixBlendMode: 'screen', // Force screen blending on the image layer
+          }
+        ]}
+      />
+    );
+  }
+
+  // Fallback for native mobile
+  return <Image source={source} style={[style, { mixBlendMode: 'screen' }]} resizeMode={resizeMode} />;
+};
+
+/**
+ * 2. Portrait Component
+ * Encapsulates the circular stone frame and level badge.
+ */
+const AgentPortrait = ({ level, avatarSource }) => (
+  <View style={styles.portraitContainer}>
+    <View style={styles.stoneFrame}>
+      <View style={styles.avatarMask}>
+        <Image source={avatarSource} style={styles.avatarImage} />
+      </View>
+    </View>
+    <View style={styles.levelBadge}>
+      <Text style={styles.levelBadgeText}>{level}</Text>
+    </View>
+  </View>
+);
+
+/**
+ * 3. GothicStatBar Component
+ * Reusable progress bar with deep-overlap icon and liquid glass effect.
+ */
+const GothicStatBar = ({ label, value, max, colorBase, colorGlow, iconSource }) => {
+  const percentage = Math.min(100, Math.max(0, (value / max) * 100));
+  const iconSize = HUD_CONFIG.BARS.HEIGHT * HUD_CONFIG.BARS.ICON_SCALE;
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.barRow, { height: iconSize }]}>
       
-      {/* AVATAR CIRCLE - Overlapping */}
-      <View style={styles.avatarWrapper}>
-        <LinearGradient
-          colors={[theme.colors.border.cyan, theme.colors.border.gold]}
-          start={{x: 0, y: 0}}
-          end={{x: 1, y: 1}}
-          style={styles.avatarGlow}
-        >
-          <View style={styles.avatarInner}>
-            <Image 
-              source={require('../../../assets/knight_avatar.png')} 
-              style={styles.avatar}
-            />
+      {/* BACKGROUND FRAME LAYER */}
+      <View style={styles.barFrameWrapper}>
+        <WebBlendedImage 
+          source={require('../../../assets/ui/frame_v2.png')}
+          style={styles.fullAbsolute}
+          resizeMode="stretch"
+        />
+        
+        {/* LIQUID CONTENT */}
+        <View style={styles.liquidTubeContainer}>
+          <View style={[styles.liquidFill, { width: `${percentage}%` }]}>
+            <LinearGradient
+              colors={['#000', colorBase, colorGlow]}
+              start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+              style={styles.fullAbsolute}
+            >
+              {/* Texture Layer */}
+              <WebBlendedImage 
+                source={require('../../../assets/ui/texture_liquid.png')}
+                style={[styles.fullAbsolute, { opacity: 0.3 }]}
+                resizeMode="cover"
+              />
+            </LinearGradient>
           </View>
-        </LinearGradient>
+          
+          {/* Glass Gloss Overlay */}
+          <View style={styles.glassShine} />
+          
+          <Text style={[styles.barValueText, HUD_CONFIG.TEXT_SHADOW]}>
+            {value} / {max}
+          </Text>
+        </View>
       </View>
 
-      {/* STATS PANEL - To the right */}
-      <View style={styles.statsPanel}>
-        <View style={styles.headerRow}>
-          <View>
-            <Text style={styles.name}>{name}</Text>
-            <Text style={styles.level}>Lv. {level} • {x},{y} ({mapWidth}x{mapHeight})</Text>
-          </View>
-          <View style={[styles.statusBadge, { backgroundColor: status === 'MOVING' ? '#4CAF50' : '#FFC107' }]}>
-            <Text style={styles.statusText}>{status}</Text>
+      {/* SOCKETED ICON - Deep Overlap */}
+      <View style={[styles.iconHarness, { width: iconSize, height: iconSize }]}>
+        {/* Local dark spot to ground the blend */}
+        <View style={styles.iconBacklight} />
+        <WebBlendedImage source={iconSource} style={styles.iconImage} />
+      </View>
+
+    </View>
+  );
+};
+
+/**
+ * MAIN: AgentProfile (The HUD Orchestrator)
+ */
+export const AgentProfile = ({ 
+  name = "Shadow-01", level = 1, hp = 100, maxHp = 100, 
+  stamina = 100, maxStamina = 100, status = "IDLE", x = 0, y = 0 
+}) => {
+  return (
+    <View style={styles.rootContainer}>
+      
+      {/* 1. AGENT PORTRAIT */}
+      <AgentPortrait 
+        level={level} 
+        avatarSource={require('../../../assets/knight_avatar.png')} 
+      />
+
+      {/* 2. FLOATING INFO GROUP */}
+      <View style={styles.infoWrapper}>
+        
+        {/* STRUCTURAL FILIGREE (Visually anchors the bars) */}
+        <WebBlendedImage 
+          source={require('../../../assets/ui/ornament_v2.png')}
+          style={styles.ornamentBackground}
+          resizeMode="cover"
+        />
+
+        {/* HEADER: Name & Status */}
+        <View style={styles.header}>
+          <Text style={[styles.nameText, HUD_CONFIG.TEXT_SHADOW]}>{name.toUpperCase()}</Text>
+          <View style={styles.statusRow}>
+            <Text style={[styles.statusText, HUD_CONFIG.TEXT_SHADOW]}>{status}</Text>
+            <View style={styles.dotSeparator} />
+            <Text style={[styles.coordText, HUD_CONFIG.TEXT_SHADOW]}>{x}, {y}</Text>
           </View>
         </View>
 
-        {/* HP BAR */}
-        <View style={styles.barRow}>
-          <Text style={styles.barLabel}>HP</Text>
-          <View style={styles.barContainer}>
-            <LinearGradient
-              colors={theme.gradients.hp}
-              start={{x: 0, y: 0}}
-              end={{x: 1, y: 0}}
-              style={[styles.barFill, { width: `${(hp/maxHp) * 100}%` }]}
-            />
-            <Text style={styles.barValue}>{hp}/{maxHp}</Text>
-          </View>
-        </View>
-
-        {/* CURRENT ACTION / THOUGHTS */}
-        <View style={styles.actionBox}>
-          <Text style={styles.actionLabel}>SYSTEM INTENT: {currentTask || 'EXPLORING'}</Text>
-          <Text style={styles.actionText} numberOfLines={2}>
-            {"> "}{currentAction}
-          </Text>
+        {/* STAT BARS */}
+        <View style={styles.statsContainer}>
+          <GothicStatBar 
+            iconSource={require('../../../assets/ui/heart_v2.png')}
+            colorBase="#c53030" colorGlow="#f56565"
+            value={hp} max={maxHp}
+          />
+          <GothicStatBar 
+            iconSource={require('../../../assets/ui/mana_v2.png')}
+            colorBase="#2b6cb0" colorGlow="#4299e1"
+            value={stamina} max={maxStamina}
+          />
         </View>
       </View>
 
@@ -78,138 +189,189 @@ export const AgentProfile = ({
 };
 
 const styles = StyleSheet.create({
-  container: {
+  // UTILS
+  fullAbsolute: { ...StyleSheet.absoluteFillObject },
+
+  rootContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginLeft: 0,
-    marginTop: -25, // Overlap effect with header
+    padding: 20,
+    backgroundColor: 'transparent', // FIX: Ensure no gray squares
   },
-  avatarWrapper: {
-    zIndex: 10,
+
+  // PORTRAIT STYLES
+  portraitContainer: {
+    width: HUD_CONFIG.PORTRAIT.SIZE,
+    height: HUD_CONFIG.PORTRAIT.SIZE,
+    zIndex: 1000,
   },
-  avatarGlow: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    padding: 3,
+  stoneFrame: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 999,
+    backgroundColor: '#121214',
+    borderWidth: HUD_CONFIG.PORTRAIT.BORDER,
+    borderColor: '#3a3a3d',
+    borderTopColor: '#6a6a6e',
+    borderBottomColor: '#000',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: theme.colors.primary,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.8,
-    shadowRadius: 10,
-    elevation: 15,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.9,
+    shadowRadius: 15,
   },
-  avatarInner: {
-    width: 114,
-    height: 114,
-    borderRadius: 57,
-    backgroundColor: '#000',
+  avatarMask: {
+    width: '88%',
+    height: '88%',
+    borderRadius: 999,
     overflow: 'hidden',
-    borderWidth: 2,
-    borderColor: 'rgba(0,0,0,0.8)',
+    borderWidth: 1,
+    borderColor: 'rgba(236, 201, 75, 0.4)',
   },
-  avatar: {
+  avatarImage: {
     width: '100%',
     height: '100%',
   },
-  statsPanel: {
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    paddingLeft: 65, // Room for overlapping avatar
-    paddingRight: 20,
-    paddingVertical: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.15)',
-    marginLeft: -55, // Shift left to overlap
-    minWidth: 260,
-    marginTop: 20,
+  levelBadge: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    backgroundColor: '#000',
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 2,
+    borderColor: '#ecc94b',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowRadius: 10,
+    shadowOpacity: 1,
   },
-  headerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 8,
-  },
-  statusBadge: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
-  },
-  statusText: {
-    color: '#fff',
-    fontSize: 8,
+  levelBadgeText: {
+    color: '#ecc94b',
+    fontSize: 16,
     fontWeight: '900',
+    fontFamily: theme.typography.fantasy,
   },
-  name: {
-    color: '#fff',
-    fontSize: 15,
-    fontWeight: '900',
-    textShadowColor: 'rgba(0,0,0,0.8)',
-    textShadowRadius: 2,
-    letterSpacing: 0.5,
+
+  // INFO WRAPPER
+  infoWrapper: {
+    marginLeft: HUD_CONFIG.PORTRAIT.OVERLAP_X,
+    paddingLeft: 45,
+    justifyContent: 'center',
+    position: 'relative',
+    minWidth: 300,
   },
-  level: {
-    color: theme.colors.text.secondary,
-    fontSize: 11,
-    fontWeight: '900',
-    textTransform: 'uppercase',
+  ornamentBackground: {
+    position: 'absolute',
+    left: 20,
+    top: -10,
+    width: '100%',
+    height: '120%',
+    opacity: 0.5,
+    tintColor: '#cbd5e0',
+    zIndex: -1,
   },
-  barRow: {
+  header: {
+    marginBottom: 10,
+  },
+  nameText: {
+    color: '#ecc94b',
+    fontSize: 26,
+    fontFamily: theme.typography.fantasy,
+    letterSpacing: 2,
+  },
+  statusRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 6,
-    gap: 8,
+    marginTop: -4,
   },
-  barLabel: {
-    color: '#fff',
-    fontSize: 8,
-    fontWeight: '900',
-    width: 45,
+  statusText: {
+    color: '#a0aec0',
+    fontSize: 12,
+    fontFamily: theme.typography.bold,
   },
-  barContainer: {
-    flex: 1,
-    height: 12,
-    backgroundColor: '#000',
+  coordText: {
+    color: '#718096',
+    fontSize: 12,
+    fontFamily: theme.typography.bold,
+  },
+  dotSeparator: {
+    width: 4,
+    height: 4,
     borderRadius: 2,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: '#4a5568',
+    marginHorizontal: 12,
+  },
+
+  // BAR STYLES
+  statsContainer: {
+    gap: HUD_CONFIG.BARS.SPACING,
+  },
+  barRow: {
+    flexDirection: 'row', 
+    alignItems: 'center',
+    width: '100%',
+  },
+  barFrameWrapper: {
+    flex: 1,
+    height: HUD_CONFIG.BARS.HEIGHT,
+    position: 'relative',
+    zIndex: 100,
+  },
+  liquidTubeContainer: {
+    ...StyleSheet.absoluteFillObject,
+    marginLeft: HUD_CONFIG.BARS.SOCKET_PADDING,
+    marginRight: 8,
+    marginTop: 4,
+    marginBottom: 4,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    borderRadius: 10,
     overflow: 'hidden',
-    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.05)',
   },
-  barFill: {
+  liquidFill: {
     height: '100%',
+    position: 'relative',
   },
-  barValue: {
+  glassShine: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: '100%',
+    height: '40%',
+    backgroundColor: 'rgba(255,255,255,0.12)',
+  },
+  barValueText: {
     position: 'absolute',
     width: '100%',
     textAlign: 'center',
     color: '#fff',
-    fontSize: 8,
-    fontWeight: '900',
-    textShadowColor: '#000',
-    textShadowRadius: 1,
+    fontSize: 11,
+    fontWeight: 'bold',
+    top: 1,
   },
-  actionBox: {
-    marginTop: 10,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderRadius: 4,
-    padding: 6,
-    borderLeftWidth: 2,
-    borderLeftColor: theme.colors.accent,
+
+  // ICON STYLES
+  iconHarness: {
+    position: 'absolute',
+    left: HUD_CONFIG.BARS.ICON_OFFSET,
+    zIndex: 500,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  actionLabel: {
-    color: theme.colors.accent,
-    fontSize: 7,
-    fontWeight: '900',
-    marginBottom: 2,
+  iconBacklight: {
+    position: 'absolute',
+    width: '70%',
+    height: '70%',
+    backgroundColor: '#000',
+    borderRadius: 999,
   },
-  actionText: {
-    color: '#fff',
-    fontSize: 10,
-    fontWeight: '500',
-    fontStyle: 'italic',
-  },
+  iconImage: {
+    width: '100%',
+    height: '100%',
+  }
 });

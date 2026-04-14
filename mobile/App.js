@@ -10,6 +10,10 @@ import { agentApi } from './src/api/agentApi';
 import { LoginScreen } from './src/features/auth/LoginScreen';
 import { SocketProvider, useSocket } from './src/api/SocketContext';
 
+// FANTASY FONTS
+import { useFonts, Cinzel_700Bold } from '@expo-google-fonts/cinzel';
+import { Lora_400Regular, Lora_700Bold } from '@expo-google-fonts/lora';
+
 /**
  * Main Content component that uses the SocketContext.
  */
@@ -52,20 +56,15 @@ function GameContent({ handleLogout }) {
     }
   }, [addLog]);
 
-  // Initial data fetch and socket connection
   useEffect(() => {
     fetchInitialData();
     connect();
   }, [fetchInitialData, connect]);
 
-  // WebSocket Subscription
   useEffect(() => {
     if (!agent?.id || !connected) return;
 
-    console.log("Setting up WebSocket subscription for agent:", agent.id);
     const subscription = subscribeToAgent(agent.id, (updatedState) => {
-      console.log(`[App] Received agent update:`, updatedState);
-      // Update agent state in real-time
       setAgent(prev => {
         const nextLocId = updatedState.currentLocationId || prev?.currentLocationId;
         return {
@@ -83,13 +82,9 @@ function GameContent({ handleLogout }) {
       }
     });
 
-    return () => {
-      console.log("Cleaning up WebSocket subscription for agent:", agent.id);
-      subscription.unsubscribe();
-    };
+    return () => subscription.unsubscribe();
   }, [agent?.id, connected, subscribeToAgent, addLog]);
 
-  // Effect to handle map/location change
   useEffect(() => {
     if (!agent?.currentLocationId) return;
 
@@ -97,36 +92,27 @@ function GameContent({ handleLogout }) {
     const locId = agent.currentLocationId.toLowerCase();
     const currentLocId = location?.id?.toLowerCase();
     
-    const shouldFetch = !location || currentLocId !== locId;
-    
-    console.log(`[MapSync] Checking location: Current=${currentLocId}, Target=${locId}, ShouldFetch=${shouldFetch}`);
-
-    if (shouldFetch) {
+    if (!location || currentLocId !== locId) {
       const updateLocation = async () => {
         try {
-          console.log("[MapSync] Location change detected! Fetching details for:", locId);
           const locDetails = await agentApi.getLocationDetails(locId);
           if (!isCancelled) {
             setLocation(locDetails);
             addLog("Wkroczono do: " + locDetails.name);
           }
         } catch (err) {
-          console.error("[MapSync] Failed to fetch new location details:", err);
+          console.error("[MapSync] Failed to fetch layout details:", err);
         }
       };
       updateLocation();
     }
-
-    return () => {
-      isCancelled = true;
-    };
+    return () => { isCancelled = true; };
   }, [agent?.currentLocationId, location?.id, addLog]);
 
   const handleCommand = async (goal) => {
     if (agent) {
       addLog("> USER CMD: " + goal);
       await agentApi.sendGoal(agent.id, goal);
-      // No need to fetch data again, WebSocket will push the update
     }
   };
 
@@ -199,10 +185,26 @@ function GameContent({ handleLogout }) {
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  
+  // FONT LOADING
+  const [fontsLoaded] = useFonts({
+    Cinzel_700Bold,
+    Lora_400Regular,
+    Lora_700Bold,
+  });
 
   const handleLoginSuccess = () => {
     setIsAuthenticated(true);
   };
+
+  if (!fontsLoaded) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#ecc94b" />
+        <Text style={styles.loadingText}>Wczytywanie magii...</Text>
+      </View>
+    );
+  }
 
   if (!isAuthenticated) {
     return <LoginScreen onLoginSuccess={handleLoginSuccess} />;
@@ -219,6 +221,12 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#000',
+  },
+  loadingContainer: {
+    flex: 1,
+    backgroundColor: '#0a0a0b',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   center: {
     justifyContent: 'center',
@@ -237,8 +245,10 @@ const styles = StyleSheet.create({
     left: 20,
   },
   loadingText: {
-    color: theme.colors.text.muted,
+    color: '#ecc94b',
     marginTop: theme.spacing.md,
+    fontFamily: 'serif',
+    fontWeight: 'bold',
   },
   onlineBadge: {
     position: 'absolute',
