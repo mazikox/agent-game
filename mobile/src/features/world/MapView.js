@@ -25,7 +25,7 @@ const PulseIcon = ({ children }) => {
   const opacity = useRef(new Animated.Value(0.8)).current;
 
   useEffect(() => {
-    Animated.loop(
+    const animation = Animated.loop(
       Animated.parallel([
         Animated.sequence([
           Animated.timing(scale, { toValue: 1.2, duration: 1000, useNativeDriver: true }),
@@ -36,7 +36,9 @@ const PulseIcon = ({ children }) => {
           Animated.timing(opacity, { toValue: 0.8, duration: 1000, useNativeDriver: true }),
         ])
       ])
-    ).start();
+    );
+    animation.start();
+    return () => animation.stop();
   }, [scale, opacity]);
 
   return (
@@ -65,7 +67,7 @@ const MAP_CONFIG = {
   },
 };
 
-export const MapView = ({ agentX, agentY, mapWidth, mapHeight, portals = [], locationName = "" }) => {
+export const MapView = ({ agentX, agentY, mapWidth, mapHeight, portals = [], locationName = "", agentName = "Shadow-01" }) => {
   const config = MAP_CONFIG[locationName] || MAP_CONFIG['default'];
   const [currentMap, setCurrentMap] = useState(config.uri);
   const [currentRatio, setCurrentRatio] = useState(config.ratio);
@@ -188,7 +190,7 @@ export const MapView = ({ agentX, agentY, mapWidth, mapHeight, portals = [], loc
                     ]}>
                         <View style={styles.pulseRing} />
                         <View style={styles.agentTag}>
-                            <Text style={styles.agentTagText}>Shadow-01</Text>
+                            <Text style={styles.agentTagText}>{agentName}</Text>
                             <Text style={styles.agentCoords}>({agentX}, {agentY})</Text>
                         </View>
                         <View style={styles.pinWrapper}>

@@ -4,7 +4,7 @@ import { theme } from '../../theme/theme';
 import { Settings, Coins, Diamond, Menu } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
-export const TopBar = ({ gold = 1575, gems = 28, locationName = "World" }) => {
+export const TopBar = ({ gold, gems, locationName = "World" }) => {
   return (
     <View style={styles.safeArea}>
       <View style={styles.container}>

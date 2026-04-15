@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState } from 'react';
 import { StyleSheet, View, SafeAreaView, StatusBar, Text, ActivityIndicator } from 'react-native';
 import { theme } from './src/theme/theme';
 import { AgentProfile } from './src/features/agent/AgentProfile';
@@ -6,115 +6,29 @@ import { MapView } from './src/features/world/MapView';
 import { AgentConsole } from './src/features/hud/AgentConsole';
 import { TopBar } from './src/features/hud/TopBar';
 import { SideMenu } from './src/features/hud/SideMenu';
-import { agentApi } from './src/api/agentApi';
+import { HUDElement } from './src/features/hud/HUDElement';
 import { LoginScreen } from './src/features/auth/LoginScreen';
-import { SocketProvider, useSocket } from './src/api/SocketContext';
+import { SocketProvider } from './src/api/SocketContext';
 
 // FANTASY FONTS
 import { useFonts, Cinzel_700Bold } from '@expo-google-fonts/cinzel';
 import { Lora_400Regular, Lora_700Bold } from '@expo-google-fonts/lora';
 
+import { useAgentState } from './src/features/agent/hooks/useAgentState';
+
 /**
  * Main Content component that uses the SocketContext.
  */
-function GameContent({ handleLogout }) {
-  const { connected, connect, subscribeToAgent } = useSocket();
-  const [agent, setAgent] = useState(null);
-  const [location, setLocation] = useState(null);
-  const [logs, setLogs] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  const addLog = useCallback((message) => {
-    const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    setLogs(prev => {
-      if (prev.length > 0 && prev[prev.length - 1].message === message) return prev;
-      return [...prev, { time, message }].slice(-50);
-    });
-  }, []);
-
-  const fetchInitialData = useCallback(async () => {
-    try {
-      const agents = await agentApi.getAllAgents();
-      if (agents && agents.length > 0) {
-        const detailedAgent = await agentApi.getAgentDetails(agents[0].id);
-        setAgent(detailedAgent);
-        
-        if (detailedAgent.currentActionDescription) {
-          addLog(detailedAgent.currentActionDescription);
-        }
-
-        const locDetails = await agentApi.getLocationDetails(detailedAgent.currentLocationId);
-        setLocation(locDetails);
-        setError(null);
-      }
-    } catch (err) {
-      console.error("API Error:", err);
-      setError("Błąd połączenia");
-    } finally {
-      setLoading(false);
-    }
-  }, [addLog]);
-
-  useEffect(() => {
-    fetchInitialData();
-    connect();
-  }, [fetchInitialData, connect]);
-
-  useEffect(() => {
-    if (!agent?.id || !connected) return;
-
-    const subscription = subscribeToAgent(agent.id, (updatedState) => {
-      setAgent(prev => {
-        const nextLocId = updatedState.currentLocationId || prev?.currentLocationId;
-        return {
-          ...prev,
-          x: updatedState.x,
-          y: updatedState.y,
-          status: updatedState.status,
-          currentLocationId: nextLocId,
-          currentActionDescription: updatedState.currentActionDescription
-        };
-      });
-
-      if (updatedState.currentActionDescription) {
-        addLog(updatedState.currentActionDescription);
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, [agent?.id, connected, subscribeToAgent, addLog]);
-
-  useEffect(() => {
-    if (!agent?.currentLocationId) return;
-
-    let isCancelled = false;
-    const locId = agent.currentLocationId.toLowerCase();
-    const currentLocId = location?.id?.toLowerCase();
-    
-    if (!location || currentLocId !== locId) {
-      const updateLocation = async () => {
-        try {
-          const locDetails = await agentApi.getLocationDetails(locId);
-          if (!isCancelled) {
-            setLocation(locDetails);
-            addLog("Wkroczono do: " + locDetails.name);
-          }
-        } catch (err) {
-          console.error("[MapSync] Failed to fetch layout details:", err);
-        }
-      };
-      updateLocation();
-    }
-    return () => { isCancelled = true; };
-  }, [agent?.currentLocationId, location?.id, addLog]);
-
-  const handleCommand = async (goal) => {
-    if (agent) {
-      addLog("> USER CMD: " + goal);
-      await agentApi.sendGoal(agent.id, goal);
-    }
-  };
+function GameContent() {
+  const { 
+    agent, 
+    location, 
+    logs, 
+    loading, 
+    error, 
+    connected, 
+    handleCommand 
+  } = useAgentState();
 
   if (loading && !agent) {
     return (
@@ -136,17 +50,21 @@ function GameContent({ handleLogout }) {
         mapHeight={location ? location.height : 100}
         portals={location ? location.portals : []}
         locationName={location ? location.name : 'Unknown Realm'}
+        agentName={agent?.name || 'Shadow-01'}
       />
 
       <View style={[styles.hudOverlay, { pointerEvents: 'box-none' }]}>
         <SafeAreaView style={{ flex: 1, pointerEvents: 'box-none' }}>
-          <TopBar 
-            gold={1575} 
-            gems={28} 
-            locationName={location ? location.name : 'Unknown Realm'} 
-          />
+          
+          <HUDElement id="TOP_BAR">
+            <TopBar 
+              gold={agent?.gold || 0} 
+              gems={agent?.gems || 0} 
+              locationName={location ? location.name : 'Unknown Realm'} 
+            />
+          </HUDElement>
 
-          <View style={[styles.contentContainer, { pointerEvents: 'box-none' }]}>
+          <HUDElement id="AGENT_PROFILE">
             <AgentProfile 
               name={agent?.name || 'Shadow-01'}
               level={agent?.level || 1}
@@ -155,22 +73,23 @@ function GameContent({ handleLogout }) {
               status={agent?.status}
               x={agent?.x}
               y={agent?.y}
-              mapWidth={agent?.mapWidth}
-              mapHeight={agent?.mapHeight}
               currentTask={agent?.currentTask}
               currentAction={agent?.currentActionDescription}
             />
+          </HUDElement>
 
+          <HUDElement id="SIDE_MENU">
             <SideMenu />
+          </HUDElement>
 
-            <View style={[styles.bottomLeftContainer, { pointerEvents: 'box-none' }]}>
-              <AgentConsole 
-                agentId={agent?.id} 
-                logs={logs}
-                onCommandSent={handleCommand} 
-              />
-            </View>
-          </View>
+          <HUDElement id="AGENT_CONSOLE">
+            <AgentConsole 
+              agentId={agent?.id} 
+              logs={logs}
+              onCommandSent={handleCommand} 
+            />
+          </HUDElement>
+
         </SafeAreaView>
       </View>
 
@@ -220,7 +139,7 @@ export default function App() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000',
+    // Removed backgroundColor to allow HUD blending with Map
   },
   loadingContainer: {
     flex: 1,

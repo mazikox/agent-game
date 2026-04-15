@@ -28,10 +28,10 @@ export const SideMenu = () => {
       <View style={styles.grid}>
         <GridItem icon={Briefcase} label="INVENTORY" />
         <GridItem icon={Zap} label="SKILLS" color={theme.colors.gem} />
-        <GridItem icon={Sword} label="SKILLS" />
+        <GridItem icon={Sword} label="COMBAT" />
         <GridItem icon={Globe} label="MAP" color={theme.colors.gem} />
         <GridItem icon={ShoppingBag} label="SHOP" color={theme.colors.accent} />
-        <GridItem icon={MapIcon} label="MAP" />
+        <GridItem icon={MapIcon} label="QUESTS" />
       </View>
 
       {/* BOTTOM ACTIONS */}
@@ -49,9 +49,6 @@ export const SideMenu = () => {
 
 const styles = StyleSheet.create({
   container: {
-    position: 'absolute',
-    right: 15,
-    top: '25%',
     alignItems: 'center',
     width: 160,
   },
