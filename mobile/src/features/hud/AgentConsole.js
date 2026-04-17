@@ -102,7 +102,8 @@ export const AgentConsole = ({ agentId, logs = [], onCommandSent }) => {
 
 const styles = StyleSheet.create({
   container: {
-    width: 420,
+    width: '100%',
+    maxWidth: 440,
     backgroundColor: 'rgba(26, 54, 93, 0.4)',
     borderRadius: 4,
     borderWidth: 1,

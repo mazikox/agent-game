@@ -85,10 +85,11 @@ export const AgentProfile = ({
           />
         </View>
 
-        {/* LAYER 3: THE SHELL (Now semi-transparent over glass parts) */}
+        {/* LAYER 3: THE SHELL (Robust and opaque) */}
         <GothicBlendedImage 
           source={require('../../../assets/agent-szablon.png')}
           style={StyleSheet.absoluteFill}
+          isOpaque={true}
         />
 
         {/* LAYER 4: OVERLAYS (Text) */}
@@ -114,6 +115,7 @@ const styles = StyleSheet.create({
   rootContainer: {
     alignItems: 'center',
     backgroundColor: 'transparent',
+    maxWidth: '100%',
   },
   absolute: { position: 'absolute' },
   fullSize: { width: '100%', height: '100%' },

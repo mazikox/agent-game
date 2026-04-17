@@ -2,23 +2,8 @@ import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { View, StyleSheet, Text, ImageBackground, Animated, Image } from 'react-native';
 import { theme } from '../../theme/theme';
 import { MapPin, Atom } from 'lucide-react-native';
+import { MapWindowFrame } from './MapWindowFrame';
 
-const Corner = ({ position }) => {
-  const styles = StyleSheet.create({
-    corner: {
-      position: 'absolute',
-      width: 15,
-      height: 15,
-      borderColor: theme.colors.gold,
-      zIndex: 5,
-    },
-    topLeft: { top: -2, left: -2, borderTopWidth: 3, borderLeftWidth: 3 },
-    topRight: { top: -2, right: -2, borderTopWidth: 3, borderRightWidth: 3 },
-    bottomLeft: { bottom: -2, left: -2, borderBottomWidth: 3, borderLeftWidth: 3 },
-    bottomRight: { bottom: -2, right: -2, borderBottomWidth: 3, borderRightWidth: 3 },
-  });
-  return <View style={[styles.corner, styles[position]]} />;
-};
 
 const PulseIcon = ({ children }) => {
   const scale = useRef(new Animated.Value(1)).current;
@@ -142,67 +127,68 @@ export const MapView = ({ agentX, agentY, mapWidth, mapHeight, portals = [], loc
         style={[styles.mapViewport, { opacity: fadeAnim }]}
         onLayout={onViewportLayout}
       >
-        {/* The Measured Canvas: Strictly follows calculated 'Best Fit' pixels */}
-        <View style={[styles.canvas, canvasSize]}>
-            <Corner position="topLeft" />
-            <Corner position="topRight" />
-            <Corner position="bottomLeft" />
-            <Corner position="bottomRight" />
+        <MapWindowFrame 
+          title={locationName} 
+          style={[styles.mapWindow, canvasSize]}
+        >
+          {/* The Measured Canvas: Strictly follows calculated 'Best Fit' pixels */}
+          <View style={[styles.canvas, { width: '100%', height: '100%' }]}>
 
-            <ImageBackground 
-                source={currentMap}
-                style={styles.imageLayer}
-                resizeMode="stretch" 
-            >
-                <View style={styles.worldOverlay}>
-                    {portals.map((portal, index) => (
-                        <View 
-                            key={`portal-${index}`} 
-                            style={[
-                                styles.portalContainer, 
-                                { 
-                                    left: `${(portal.sourceX / mapWidth) * 100}%`, 
-                                    top: `${(portal.sourceY / mapHeight) * 100}%` 
-                                }
-                            ]}
-                        >
-                            <PulseIcon>
-                                <View style={styles.portalIconWrapper}>
-                                    <Atom size={20} color={theme.colors.primary} strokeWidth={2.5} />
-                                </View>
-                            </PulseIcon>
-                            <Text style={styles.portalLabel}>{portal.targetLocationName}</Text>
-                        </View>
-                    ))}
+              <ImageBackground 
+                  source={currentMap}
+                  style={styles.imageLayer}
+                  resizeMode="stretch" 
+              >
+                  <View style={styles.worldOverlay}>
+                      {portals.map((portal, index) => (
+                          <View 
+                              key={`portal-${index}`} 
+                              style={[
+                                  styles.portalContainer, 
+                                  { 
+                                      left: `${(portal.sourceX / mapWidth) * 100}%`, 
+                                      top: `${(portal.sourceY / mapHeight) * 100}%` 
+                                  }
+                              ]}
+                          >
+                              <PulseIcon>
+                                  <View style={styles.portalIconWrapper}>
+                                      <Atom size={20} color={theme.colors.primary} strokeWidth={2.5} />
+                                  </View>
+                              </PulseIcon>
+                              <Text style={styles.portalLabel}>{portal.targetLocationName}</Text>
+                          </View>
+                      ))}
 
-                    <Animated.View style={[
-                        styles.agentMarker,
-                        {
-                            left: agentPos.x.interpolate({
-                                inputRange: [0, 100],
-                                outputRange: ['0%', '100%']
-                            }),
-                            top: agentPos.y.interpolate({
-                                inputRange: [0, 100],
-                                outputRange: ['0%', '100%']
-                            })
-                        }
-                    ]}>
-                        <View style={styles.pulseRing} />
-                        <View style={styles.agentTag}>
-                            <Text style={styles.agentTagText}>{agentName}</Text>
-                            <Text style={styles.agentCoords}>({agentX}, {agentY})</Text>
-                        </View>
-                        <View style={styles.pinWrapper}>
-                            <MapPin size={28} color={theme.colors.accent} strokeWidth={3} fill={theme.colors.accent + '20'} />
-                        </View>
-                    </Animated.View>
-                </View>
-            </ImageBackground>
-        </View>
+                      <Animated.View style={[
+                          styles.agentMarker,
+                          {
+                              left: agentPos.x.interpolate({
+                                  inputRange: [0, 100],
+                                  outputRange: ['0%', '100%']
+                              }),
+                              top: agentPos.y.interpolate({
+                                  inputRange: [0, 100],
+                                  outputRange: ['0%', '100%']
+                              })
+                          }
+                      ]}>
+                          <View style={styles.pulseRing} />
+                          <View style={styles.agentTag}>
+                              <Text style={styles.agentTagText}>{agentName}</Text>
+                              <Text style={styles.agentCoords}>({agentX}, {agentY})</Text>
+                          </View>
+                          <View style={styles.pinWrapper}>
+                              <MapPin size={28} color={theme.colors.accent} strokeWidth={3} fill={theme.colors.accent + '20'} />
+                          </View>
+                      </Animated.View>
+                  </View>
+              </ImageBackground>
+          </View>
+        </MapWindowFrame>
       </Animated.View>
 
-      <View style={styles.vignette} pointerEvents="none" />
+      {/* <View style={styles.vignette} pointerEvents="none" /> */}
     </View>
   );
 };
@@ -210,7 +196,6 @@ export const MapView = ({ agentX, agentY, mapWidth, mapHeight, portals = [], loc
 const styles = StyleSheet.create({
   container: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#0a0a0b',
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: -1,
@@ -223,22 +208,19 @@ const styles = StyleSheet.create({
   mapViewport: {
     width: '92%',
     maxWidth: 1100,
-    height: '82%', 
+    height: '85%', 
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
   },
-  canvas: {
-    backgroundColor: '#000',
+  mapWindow: {
+    width: '100%',
+    height: '100%',
     borderRadius: 8,
-    overflow: 'hidden',
+  },
+  canvas: {
+    overflow: 'hidden', 
     position: 'relative',
-    borderWidth: 1.5,
-    borderColor: 'rgba(79, 209, 237, 0.3)',
-    shadowColor: theme.colors.primary,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.8,
-    shadowRadius: 15,
   },
   imageLayer: {
     flex: 1,
