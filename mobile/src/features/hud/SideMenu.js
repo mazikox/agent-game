@@ -1,97 +1,136 @@
 import React from 'react';
-import { View, StyleSheet, Text, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, Text, TouchableOpacity, ScrollView } from 'react-native';
 import { theme } from '../../theme/theme';
 import { 
-  Briefcase, 
-  Zap, 
-  Map as MapIcon, 
-  ShoppingBag, 
-  Sword, 
-  Globe, 
+  ChevronLeft,
   MessageSquare, 
   Mic 
 } from 'lucide-react-native';
+import { NAV_ITEMS } from './navConfig';
 
-const GridItem = ({ icon: Icon, label, color = theme.colors.primary }) => (
-  <TouchableOpacity style={styles.gridItem} activeOpacity={0.7}>
-    <View style={styles.iconWrapper}>
-      <Icon size={20} color={color} />
+const NavItem = ({ icon: Icon, label, color, active }) => (
+  <TouchableOpacity 
+    style={[styles.item, active && styles.activeItem]} 
+    activeOpacity={0.7}
+  >
+    {active && <View style={styles.activeIndicator} />}
+    <View style={styles.iconContainer}>
+      <Icon size={24} color={active ? theme.colors.accent : color} />
     </View>
-    <Text style={styles.label}>{label}</Text>
+    <Text style={[styles.label, active && styles.activeLabel]}>{label}</Text>
   </TouchableOpacity>
 );
 
 export const SideMenu = () => {
   return (
-    <View style={styles.container}>
-      {/* 2-COLUMN GRID */}
-      <View style={styles.grid}>
-        <GridItem icon={Briefcase} label="INVENTORY" />
-        <GridItem icon={Zap} label="SKILLS" color={theme.colors.gem} />
-        <GridItem icon={Sword} label="COMBAT" />
-        <GridItem icon={Globe} label="MAP" color={theme.colors.gem} />
-        <GridItem icon={ShoppingBag} label="SHOP" color={theme.colors.accent} />
-        <GridItem icon={MapIcon} label="QUESTS" />
-      </View>
+    <View style={styles.sidebar}>
+      {/* TOP ACTION: BACK */}
+      <TouchableOpacity style={styles.topBtn}>
+        <ChevronLeft size={28} color={theme.colors.text.secondary} />
+      </TouchableOpacity>
+
+      <View style={styles.divider} />
+
+      {/* MIDDLE: MAIN NAV */}
+      <ScrollView contentContainerStyle={styles.navContainer} showsVerticalScrollIndicator={false}>
+        {NAV_ITEMS.map((item) => (
+          <React.Fragment key={item.id}>
+             <NavItem {...item} />
+             <View style={styles.divider} />
+          </React.Fragment>
+        ))}
+      </ScrollView>
 
       {/* BOTTOM ACTIONS */}
-      <View style={styles.bottomActions}>
-         <TouchableOpacity style={styles.actionBtn}>
-            <MessageSquare size={18} color={theme.colors.text.secondary} />
-         </TouchableOpacity>
-         <TouchableOpacity style={styles.actionBtn}>
-            <Mic size={18} color={theme.colors.text.secondary} />
-         </TouchableOpacity>
+      <View style={styles.bottomSection}>
+        <TouchableOpacity style={styles.actionBtn}>
+          <MessageSquare size={22} color={theme.colors.text.secondary} />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.actionBtn}>
+          <Mic size={22} color={theme.colors.text.secondary} />
+          <View style={styles.sparkle} /> 
+        </TouchableOpacity>
       </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  sidebar: {
+    width: 85,
+    backgroundColor: 'rgba(15, 15, 18, 0.9)',
+    borderLeftWidth: 1,
+    borderLeftColor: 'rgba(255, 255, 255, 0.1)',
+    height: '100%',
     alignItems: 'center',
-    width: 160,
+    paddingVertical: 10,
   },
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    gap: 8,
+  topBtn: {
+    padding: 10,
+    marginBottom: 5,
   },
-  gridItem: {
-    width: 70,
-    height: 70,
-    backgroundColor: 'rgba(26, 54, 93, 0.4)',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(79, 209, 237, 0.3)',
+  navContainer: {
+    alignItems: 'center',
+    paddingVertical: 5,
+  },
+  item: {
+    width: 85,
+    height: 80,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 5,
+    position: 'relative',
+    paddingVertical: 10,
   },
-  iconWrapper: {
+  activeItem: {
+    backgroundColor: 'rgba(246, 173, 85, 0.05)',
+  },
+  activeIndicator: {
+    position: 'absolute',
+    left: 0,
+    top: '20%',
+    bottom: '20%',
+    width: 3,
+    backgroundColor: theme.colors.accent,
+    borderTopRightRadius: 2,
+    borderBottomRightRadius: 2,
+    shadowColor: theme.colors.accent,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 4,
+  },
+  iconContainer: {
     marginBottom: 4,
   },
   label: {
-    color: theme.colors.text.secondary,
-    fontSize: 7,
-    fontWeight: '900',
+    color: theme.colors.text.muted,
+    fontSize: 10,
+    fontWeight: '500',
     textAlign: 'center',
-    letterSpacing: 0.5,
   },
-  bottomActions: {
-    marginTop: 20,
-    flexDirection: 'column',
-    gap: 10,
+  activeLabel: {
+    color: theme.colors.accent,
+    fontWeight: 'bold',
+  },
+  divider: {
+    width: '60%',
+    height: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+  },
+  bottomSection: {
+    marginTop: 'auto',
+    width: '100%',
+    alignItems: 'center',
+    gap: 15,
+    paddingTop: 15,
   },
   actionBtn: {
-    width: 48,
-    height: 48,
-    borderRadius: 8,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    padding: 10,
+    position: 'relative',
+  },
+  sparkle: {
+    position: 'absolute',
+    top: -5,
+    left: -5,
+    // Note: In real app we might use an image or custom vector for that star/sparkle
   }
 });

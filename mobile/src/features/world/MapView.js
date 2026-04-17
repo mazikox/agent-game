@@ -40,7 +40,7 @@ const MAP_CONFIG = {
   },
   'Azure Meadow': {
     uri: require('../../../assets/maps/azure_meadow.png'),
-    ratio: 1.5,
+    ratio: 1.0,
   },
   'Deep Iron Mine': {
     uri: require('../../../assets/maps/deep_iron_mine.png'),
@@ -59,19 +59,25 @@ export const MapView = ({ agentX, agentY, mapWidth, mapHeight, portals = [], loc
   const [containerLayout, setContainerLayout] = useState({ width: 0, height: 0 });
   const fadeAnim = useRef(new Animated.Value(1)).current;
   
-  // Best Fit Algorithm: Ensure the map canvas respects the aspect ratio within BOTH width and height constraints
+  // Best Fit Algorithm: Ensure the INTERNAL map image respects the aspect ratio
   const canvasSize = useMemo(() => {
     const { width: cw, height: ch } = containerLayout;
     if (cw === 0 || ch === 0) return { width: '100%', height: '100%' };
 
+    // The header and padding offsets from MapWindowFrame styles
+    const HEADER_OFFSET = 44; // 38px header + 6px total vertical padding
+    const WIDTH_OFFSET = 3;   // 3px left padding (right is 0)
+
     const ratio = currentRatio;
+    
+    // Calculate total component size based on its internal map ratio
     let targetWidth = cw;
-    let targetHeight = cw / ratio;
+    let targetHeight = ((cw - WIDTH_OFFSET) / ratio) + HEADER_OFFSET;
 
     // If perfectly filling width makes it too tall for the viewport, scale by height instead
     if (targetHeight > ch) {
       targetHeight = ch;
-      targetWidth = ch * ratio;
+      targetWidth = ((ch - HEADER_OFFSET) * ratio) + WIDTH_OFFSET;
     }
 
     return { width: targetWidth, height: targetHeight };
@@ -111,17 +117,6 @@ export const MapView = ({ agentX, agentY, mapWidth, mapHeight, portals = [], loc
 
   return (
     <View style={styles.container}>
-      <Animated.Image 
-        source={currentMap}
-        style={[styles.ambientBackground, { 
-            opacity: fadeAnim.interpolate({
-                inputRange: [0, 1],
-                outputRange: [0, 0.35]
-            })
-        }]}
-        blurRadius={30}
-        resizeMode="cover"
-      />
 
       <Animated.View 
         style={[styles.mapViewport, { opacity: fadeAnim }]}
@@ -195,10 +190,10 @@ export const MapView = ({ agentX, agentY, mapWidth, mapHeight, portals = [], loc
 
 const styles = StyleSheet.create({
   container: {
-    ...StyleSheet.absoluteFillObject,
+    flex: 1,
     justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: -1,
+    alignItems: 'flex-end', // Glued to sidebar
+    position: 'relative',
   },
   ambientBackground: {
     ...StyleSheet.absoluteFillObject,
@@ -206,11 +201,10 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   mapViewport: {
-    width: '92%',
-    maxWidth: 1100,
-    height: '85%', 
+    width: '100%',
+    height: '100%',
     justifyContent: 'center',
-    alignItems: 'center',
+    alignItems: 'flex-end', // Glued to sidebar
     position: 'relative',
   },
   mapWindow: {

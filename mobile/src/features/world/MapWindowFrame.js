@@ -1,7 +1,7 @@
 import React from 'react';
-import { View, Text, StyleSheet, ImageBackground, Image } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { theme } from '../../theme/theme';
-import { GothicBlendedImage } from '../../components/ui/GothicBlendedImage';
+import { LinearGradient } from 'expo-linear-gradient';
 
 /**
  * MapWindowFrame
@@ -12,21 +12,23 @@ import { GothicBlendedImage } from '../../components/ui/GothicBlendedImage';
 export const MapWindowFrame = ({ title, children, style }) => {
   return (
     <View style={[styles.container, style]}>
-      {/* HEADER SECTION (TITLE BAR WITH STONE TEXTURE) */}
-      <ImageBackground 
-        source={require('../../../assets/ui/button_stone.png')}
-        style={styles.header}
-        imageStyle={styles.headerTexture}
-        resizeMode="cover"
-      >
-        <View style={styles.headerOverlay}>
-          <View style={styles.headerLine} />
-          <View style={styles.titleWrapper}>
-            <Text style={styles.titleText}>{title.toUpperCase()}</Text>
+      {/* HEADER SECTION (PREMIUM GRADIENT TITLE BAR) */}
+      <View style={styles.header}>
+        <LinearGradient
+          colors={['#1a1a1c', '#2d2d30', '#1a1a1c']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={styles.headerGradient}
+        >
+          <View style={styles.headerOverlay}>
+            <View style={styles.headerLine} />
+            <View style={styles.titleWrapper}>
+              <Text style={styles.titleText}>{title.toUpperCase()}</Text>
+            </View>
+            <View style={styles.headerLine} />
           </View>
-          <View style={styles.headerLine} />
-        </View>
-      </ImageBackground>
+        </LinearGradient>
+      </View>
 
       {/* INNER CONTENT (MAP) */}
       <View style={styles.content}>
@@ -35,17 +37,11 @@ export const MapWindowFrame = ({ title, children, style }) => {
 
       {/* ORNAMENTAL CORNERS (METALLIC) */}
       <View style={[styles.corner, styles.topLeft]} />
-      <View style={[styles.corner, styles.topRight]} />
       <View style={[styles.corner, styles.bottomLeft]} />
-      <View style={[styles.corner, styles.bottomRight]} />
       
-      {/* TEXTURED BORDER OVERLAY (Using frame asset) */}
-      <GothicBlendedImage 
-        source={require('../../../assets/ui/frame_v2.png')}
-        style={styles.borderOverlay}
-        isSolid={true}
-        resizeMode="stretch"
-      />
+      {/* Right corners hidden for glued look */}
+      <View style={[styles.corner, styles.topRight, { display: 'none' }]} />
+      <View style={[styles.corner, styles.bottomRight, { display: 'none' }]} />
     </View>
   );
 };
@@ -54,8 +50,10 @@ const styles = StyleSheet.create({
   container: {
     position: 'relative',
     backgroundColor: '#0a0a0b',
-    borderRadius: 8,
+    borderTopLeftRadius: 8,
+    borderBottomLeftRadius: 8,
     padding: 3, 
+    paddingRight: 0, // Glue to sidebar
     overflow: 'visible',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 12 },
@@ -66,14 +64,13 @@ const styles = StyleSheet.create({
   header: {
     height: 38,
     borderTopLeftRadius: 8,
-    borderTopRightRadius: 8,
     overflow: 'hidden',
     borderBottomWidth: 2,
     borderBottomColor: '#1a1a1a',
+    backgroundColor: '#1a1a1c',
   },
-  headerTexture: {
-    opacity: 0.9,
-    tintColor: '#4a4a4a', // Make it darker stone
+  headerGradient: {
+    flex: 1,
   },
   headerOverlay: {
     flex: 1,
@@ -81,7 +78,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 15,
-    backgroundColor: 'rgba(0,0,0,0.3)', // Subtle darkening
+    backgroundColor: 'rgba(0,0,0,0.2)', // Subtle darkening
   },
   headerLine: {
     flex: 1,
@@ -105,7 +102,6 @@ const styles = StyleSheet.create({
     position: 'relative',
     overflow: 'hidden',
     borderBottomLeftRadius: 6,
-    borderBottomRightRadius: 6,
     backgroundColor: '#000',
   },
   borderOverlay: {
@@ -128,7 +124,7 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
   },
   topLeft: { top: -2, left: -2 },
-  topRight: { top: -2, right: -2 },
   bottomLeft: { bottom: -2, left: -2 },
+  topRight: { top: -2, right: -2 },
   bottomRight: { bottom: -2, right: -2 },
 });

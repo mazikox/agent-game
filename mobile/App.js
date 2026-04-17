@@ -5,7 +5,6 @@ import { theme } from './src/theme/theme';
 import { AgentProfile } from './src/features/agent/AgentProfile';
 import { MapView } from './src/features/world/MapView';
 import { AgentConsole } from './src/features/hud/AgentConsole';
-import { TopBar } from './src/features/hud/TopBar';
 import { SideMenu } from './src/features/hud/SideMenu';
 import { HUDElement } from './src/features/hud/HUDElement';
 import { LoginScreen } from './src/features/auth/LoginScreen';
@@ -45,36 +44,35 @@ function GameContent() {
   }
 
   return (
-    <ImageBackground 
-      source={require('./assets/background.png')} 
-      style={[styles.container, styles.fullScreen]}
-      imageStyle={styles.fullScreen}
-      resizeMode="cover"
-    >
-      <View style={styles.container}>
-        <StatusBar hidden />
-        
-        <MapView 
-          agentX={agent?.x || 0}
-          agentY={agent?.y || 0}
-          mapWidth={location ? location.width : 100}
-          mapHeight={location ? location.height : 100}
-          portals={location ? location.portals : []}
-          locationName={location ? location.name : 'Unknown Realm'}
-          agentName={agent?.name || 'Shadow-01'}
-        />
+    <View style={[styles.container, { backgroundColor: theme.colors.fantasy.stone }]}>
+      <StatusBar hidden />
+      
+      {/* MAIN INTEGRATED LAYOUT */}
+      <View style={styles.mainRow}>
+          
+          {/* CENTER: MAP AREA */}
+          <View style={styles.mapArea}>
+            <MapView 
+              agentX={agent?.x || 0}
+              agentY={agent?.y || 0}
+              mapWidth={location ? location.width : 100}
+              mapHeight={location ? location.height : 100}
+              portals={location ? location.portals : []}
+              locationName={location ? location.name : 'Unknown Realm'}
+              agentName={agent?.name || 'Shadow-01'}
+            />
+          </View>
 
+          {/* RIGHT: SIDEBAR */}
+          <View style={styles.sidebarArea}>
+            <SideMenu />
+          </View>
+        </View>
+
+        {/* HUD OVERLAY (ABSOLUTE ELEMENTS) */}
         <View style={[styles.hudOverlay, { pointerEvents: 'box-none' }]}>
           <SafeAreaView style={{ flex: 1, pointerEvents: 'box-none' }}>
             
-            <HUDElement id="TOP_BAR">
-              <TopBar 
-                gold={agent?.gold || 0} 
-                gems={agent?.gems || 0} 
-                locationName={location ? location.name : 'Unknown Realm'} 
-              />
-            </HUDElement>
-
             <HUDElement id="AGENT_PROFILE">
               <AgentProfile 
                 name={agent?.name || 'Shadow-01'}
@@ -88,10 +86,6 @@ function GameContent() {
                 currentAction={agent?.currentActionDescription}
                 hudConfig={currentHudConfig}
               />
-            </HUDElement>
-
-            <HUDElement id="SIDE_MENU">
-              <SideMenu />
             </HUDElement>
 
             <HUDElement id="AGENT_CONSOLE">
@@ -111,8 +105,7 @@ function GameContent() {
           </View>
         )}
       </View>
-    </ImageBackground>
-  );
+    );
 }
 
 export default function App() {
@@ -155,6 +148,18 @@ const styles = StyleSheet.create({
   },
   fullScreen: {
     width: '100%',
+    height: '100%',
+  },
+  mainRow: {
+    flex: 1,
+    flexDirection: 'row',
+  },
+  mapArea: {
+    flex: 1,
+    padding: 15,
+  },
+  sidebarArea: {
+    width: 85,
     height: '100%',
   },
   loadingContainer: {
