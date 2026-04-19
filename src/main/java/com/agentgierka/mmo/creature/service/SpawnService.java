@@ -62,6 +62,7 @@ public class SpawnService {
                 .rank(template.getRank())
                 .x(posX)
                 .y(posY)
+                .level(template.getLevel())
                 .currentHp(template.getScaledHp())
                 .maxHp(template.getScaledHp())
                 .damage(template.getScaledDamage())

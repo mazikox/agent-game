@@ -23,6 +23,7 @@ function GameContent() {
   const { 
     agent, 
     location, 
+    creatures,
     logs, 
     loading, 
     error, 
@@ -58,6 +59,7 @@ function GameContent() {
               mapWidth={location ? location.width : 100}
               mapHeight={location ? location.height : 100}
               portals={location ? location.portals : []}
+              creatures={creatures || []}
               locationName={location ? location.name : 'Unknown Realm'}
               agentName={agent?.name || 'Shadow-01'}
             />

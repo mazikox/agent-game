@@ -74,12 +74,41 @@ export const SocketProvider = ({ children }) => {
     }
   };
 
+  const subscribeToLocationCreatures = (locationId, onSpawn, onKill) => {
+    if (!stompClient.current || !connected) return null;
+
+    const spawnTopic = `/topic/locations/${locationId}/creatures`;
+    const killTopic = `/topic/locations/${locationId}/creatures/killed`;
+
+    const subSpawn = stompClient.current.subscribe(spawnTopic, (message) => {
+      const payload = JSON.parse(message.body);
+      console.log(`[Socket] Creature Spawned from ${spawnTopic}:`, payload);
+      onSpawn(payload);
+    });
+
+    const subKill = stompClient.current.subscribe(killTopic, (message) => {
+      // killTopic sends just the UUID as plain text (or JSON string).
+      const payload = JSON.parse(message.body);
+      console.log(`[Socket] Creature Killed from ${killTopic}:`, payload);
+      onKill(payload);
+    });
+    
+    // We cannot push both into global subscriptions via single id easily here, 
+    // but the hook uses it like generic unsubscribe so we return composite unsubscribe callback
+    return {
+       unsubscribe: () => {
+         subSpawn.unsubscribe();
+         subKill.unsubscribe();
+       }
+    };
+  };
+
   useEffect(() => {
     return () => disconnect();
   }, []);
 
   return (
-    <SocketContext.Provider value={{ connected, connect, disconnect, subscribeToAgent, unsubscribeFromAgent }}>
+    <SocketContext.Provider value={{ connected, connect, disconnect, subscribeToAgent, unsubscribeFromAgent, subscribeToLocationCreatures }}>
       {children}
     </SocketContext.Provider>
   );

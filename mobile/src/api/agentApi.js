@@ -58,4 +58,12 @@ export const agentApi = {
     const response = await apiClient.post(`/agents/${id}/goal`, { goal });
     return response.data;
   },
+
+  /**
+   * Fetches the current list of alive creatures in a specific location.
+   */
+  getCreaturesInLocation: async (locationId) => {
+    const response = await apiClient.get(`/locations/${locationId}/creatures`);
+    return response.data;
+  },
 };

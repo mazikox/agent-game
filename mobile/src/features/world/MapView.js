@@ -52,7 +52,7 @@ const MAP_CONFIG = {
   },
 };
 
-export const MapView = ({ agentX, agentY, mapWidth, mapHeight, portals = [], locationName = "", agentName = "Shadow-01" }) => {
+export const MapView = ({ agentX, agentY, mapWidth, mapHeight, portals = [], creatures = [], locationName = "", agentName = "Shadow-01" }) => {
   const config = MAP_CONFIG[locationName] || MAP_CONFIG['default'];
   const [currentMap, setCurrentMap] = useState(config.uri);
   const [currentRatio, setCurrentRatio] = useState(config.ratio);
@@ -155,6 +155,19 @@ export const MapView = ({ agentX, agentY, mapWidth, mapHeight, portals = [], loc
                           </View>
                       ))}
 
+                      {creatures.map((creature) => (
+                          <View
+                              key={creature.instanceId}
+                              style={[
+                                  styles.creatureMarker,
+                                  {
+                                      left: `${(Number(creature.x) / mapWidth) * 100}%`,
+                                      top: `${(Number(creature.y) / mapHeight) * 100}%`
+                                  }
+                              ]}
+                          />
+                      ))}
+
                       <Animated.View style={[
                           styles.agentMarker,
                           {
@@ -254,6 +267,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     borderRadius: 8,
     textAlign: 'center',
+  },
+  creatureMarker: {
+    position: 'absolute',
+    width: 24,
+    height: 24,
+    marginLeft: -12,
+    marginTop: -12,
+    borderRadius: 12,
+    backgroundColor: '#dc2626', // Red-600
+    borderColor: '#fca5a5', // Lighter red border
+    borderWidth: 2,
+    shadowColor: '#dc2626',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 1.0,
+    shadowRadius: 8,
+    zIndex: 90,
+    elevation: 5,
   },
   agentMarker: {
     position: 'absolute',

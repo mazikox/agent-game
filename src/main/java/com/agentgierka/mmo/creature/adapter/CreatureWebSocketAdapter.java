@@ -2,6 +2,7 @@ package com.agentgierka.mmo.creature.adapter;
 
 import com.agentgierka.mmo.creature.event.CreatureKilledEvent;
 import com.agentgierka.mmo.creature.event.CreatureSpawnedEvent;
+import com.agentgierka.mmo.creature.web.mapper.CreatureMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;
@@ -14,12 +15,13 @@ import org.springframework.stereotype.Component;
 public class CreatureWebSocketAdapter {
 
     private final SimpMessagingTemplate messagingTemplate;
+    private final CreatureMapper creatureMapper;
 
     @EventListener
     public void onCreatureSpawned(CreatureSpawnedEvent event) {
         String destination = "/topic/locations/" + event.locationId() + "/creatures";
         log.debug("Broadcasting creature spawn: {} in location {}", event.instanceId(), event.locationId());
-        messagingTemplate.convertAndSend(destination, event.instance());
+        messagingTemplate.convertAndSend(destination, creatureMapper.toDto(event.instance()));
     }
 
     @EventListener

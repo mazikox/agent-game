@@ -7,9 +7,10 @@ import { useSocket } from '../../../api/SocketContext';
  * Encapsulates all WebSocket and API orchestration logic.
  */
 export function useAgentState() {
-  const { connected, connect, subscribeToAgent } = useSocket();
+  const { connected, connect, subscribeToAgent, subscribeToLocationCreatures } = useSocket();
   const [agent, setAgent] = useState(null);
   const [location, setLocation] = useState(null);
+  const [creatures, setCreatures] = useState([]);
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -38,6 +39,14 @@ export function useAgentState() {
 
         const locDetails = await agentApi.getLocationDetails(detailedAgent.currentLocationId);
         setLocation(locDetails);
+        
+        try {
+            const initialCreatures = await agentApi.getCreaturesInLocation(detailedAgent.currentLocationId);
+            setCreatures(initialCreatures || []);
+        } catch(cErr) {
+            console.error("Failed to load initial creatures:", cErr);
+        }
+        
         setError(null);
       }
     } catch (err) {
@@ -79,31 +88,58 @@ export function useAgentState() {
     return () => subscription.unsubscribe();
   }, [agent?.id, connected, subscribeToAgent, addLog]);
 
-  // 5. Lifecycle: Map / Location details sync
+  // 5. Lifecycle: Map / Location details sync and Creatures
   useEffect(() => {
     if (!agent?.currentLocationId) return;
 
     let isCancelled = false;
+    let locSubscription = null;
     const locId = agent.currentLocationId.toLowerCase();
     const currentLocId = location?.id?.toLowerCase();
     
-    // Only fetch if location changed or missing
+    // Fetch if location changed or missing
     if (!location || currentLocId !== locId) {
       const updateLocation = async () => {
         try {
           const locDetails = await agentApi.getLocationDetails(locId);
+          const initialCreatures = await agentApi.getCreaturesInLocation(locId);
+          
           if (!isCancelled) {
             setLocation(locDetails);
+            setCreatures(initialCreatures || []);
             addLog("Wkroczono do: " + locDetails.name);
           }
         } catch (err) {
-          console.error("[useAgentState] Failed to sync location layout:", err);
+          console.error("[useAgentState] Failed to sync location layout or creatures:", err);
         }
       };
       updateLocation();
     }
-    return () => { isCancelled = true; };
-  }, [agent?.currentLocationId, location?.id, addLog]);
+
+    // Subscribe to location creatures if connected
+    if (connected) {
+      locSubscription = subscribeToLocationCreatures(
+        locId,
+        (newCreature) => {
+          setCreatures(prev => {
+            // Unikanie duplikatów przy ponownym połączeniu
+            if (prev.some(c => c.instanceId === newCreature.instanceId)) return prev;
+            return [...prev, newCreature];
+          });
+        },
+        (killedId) => {
+          setCreatures(prev => prev.filter(c => c.instanceId !== killedId));
+        }
+      );
+    }
+
+    return () => { 
+      isCancelled = true; 
+      if (locSubscription) {
+        locSubscription.unsubscribe();
+      }
+    };
+  }, [agent?.currentLocationId, location?.id, connected, addLog, subscribeToLocationCreatures]);
 
   // 6. Actions
   const handleCommand = async (goal) => {
@@ -124,6 +160,7 @@ export function useAgentState() {
     loading,
     error,
     connected,
-    handleCommand
+    handleCommand,
+    creatures
   };
 }

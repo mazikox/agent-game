@@ -23,6 +23,8 @@ public class CreatureInstance implements Serializable {
     private int x;
     private int y;
     
+    private int level;
+    
     private int currentHp;
     private int maxHp;
     private int damage;
