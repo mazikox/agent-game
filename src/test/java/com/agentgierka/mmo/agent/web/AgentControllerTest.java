@@ -7,6 +7,9 @@ import com.agentgierka.mmo.agent.web.dto.MoveRequest;
 import com.agentgierka.mmo.player.Player;
 import com.agentgierka.mmo.player.PlayerRepository;
 import com.agentgierka.mmo.security.AgentSecurity;
+import com.agentgierka.mmo.creature.repository.CreatureInstanceRepository;
+import com.agentgierka.mmo.agent.repository.AgentWorldStateRepository;
+import com.agentgierka.mmo.agent.service.WorldStateSynchronizer;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -47,6 +50,15 @@ class AgentControllerTest {
 
     @MockitoBean
     private AgentSecurity agentSecurity;
+
+    @MockitoBean
+    private CreatureInstanceRepository creatureInstanceRepository;
+
+    @MockitoBean
+    private AgentWorldStateRepository agentWorldStateRepository;
+
+    @MockitoBean
+    private WorldStateSynchronizer worldStateSynchronizer;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 

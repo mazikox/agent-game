@@ -5,12 +5,15 @@ import com.agentgierka.mmo.agent.event.AgentGoalCompletedEvent;
 import com.agentgierka.mmo.agent.model.Agent;
 import com.agentgierka.mmo.agent.model.AgentWorldState;
 import com.agentgierka.mmo.agent.repository.AgentRepository;
+import com.agentgierka.mmo.agent.repository.AgentWorldStateRepository;
 import com.agentgierka.mmo.player.Player;
 import com.agentgierka.mmo.player.PlayerRepository;
 import com.agentgierka.mmo.world.Location;
 import com.agentgierka.mmo.world.LocationRepository;
 import com.agentgierka.mmo.world.Portal;
 import com.agentgierka.mmo.world.PortalRepository;
+import com.agentgierka.mmo.creature.repository.CreatureInstanceRepository;
+import com.agentgierka.mmo.creature.repository.LootTableRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -21,6 +24,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.event.EventListener;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
@@ -51,6 +55,15 @@ class TeleportationSystemIntegrationTest {
 
     @Autowired
     private PortalRepository portalRepository;
+
+    @MockitoBean
+    private AgentWorldStateRepository agentWorldStateRepository;
+
+    @MockitoBean
+    private CreatureInstanceRepository creatureInstanceRepository;
+
+    @Autowired
+    private LootTableRepository lootTableRepository;
 
     @Autowired
     private TestEventCollector eventCollector;
@@ -117,6 +130,7 @@ class TeleportationSystemIntegrationTest {
 
     @org.junit.jupiter.api.AfterEach
     void tearDown() {
+        lootTableRepository.deleteAll();
         portalRepository.deleteAll();
         agentRepository.deleteAll();
         playerRepository.deleteAll();

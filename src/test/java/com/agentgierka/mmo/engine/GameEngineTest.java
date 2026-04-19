@@ -41,6 +41,9 @@ class GameEngineTest {
     @Mock
     private ApplicationEventPublisher eventPublisher;
 
+    @Mock
+    private com.agentgierka.mmo.creature.service.SpawnService spawnService;
+
     private GameEngine gameEngine;
 
     @BeforeEach
@@ -58,6 +61,7 @@ class GameEngineTest {
                 engineControl,
                 taskExecutor,
                 eventPublisher,
+                spawnService,
                 Duration.ofSeconds(5)
         );
     }

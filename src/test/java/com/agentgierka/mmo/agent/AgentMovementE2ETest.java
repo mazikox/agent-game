@@ -5,9 +5,12 @@ import com.agentgierka.mmo.agent.model.AgentStatus;
 import com.agentgierka.mmo.agent.model.AgentWorldState;
 import com.agentgierka.mmo.agent.repository.AgentRepository;
 import com.agentgierka.mmo.agent.repository.AgentWorldStateRepository;
+import com.agentgierka.mmo.creature.repository.CreatureInstanceRepository;
+import com.agentgierka.mmo.agent.service.WorldStateSynchronizer;
 import com.agentgierka.mmo.engine.GameEngine;
 import com.agentgierka.mmo.player.Player;
 import com.agentgierka.mmo.player.PlayerRepository;
+import com.agentgierka.mmo.security.AgentSecurity;
 import com.agentgierka.mmo.ai.port.Brain;
 import com.agentgierka.mmo.engine.EngineControl;
 import com.agentgierka.mmo.agent.web.dto.MoveRequest;
@@ -68,6 +71,15 @@ class AgentMovementE2ETest {
     private AgentWorldStateRepository agentWorldStateRepository;
 
     @MockitoBean
+    private CreatureInstanceRepository creatureInstanceRepository;
+
+    @MockitoBean
+    private WorldStateSynchronizer worldStateSynchronizer;
+
+    @MockitoBean
+    private AgentSecurity agentSecurity;
+
+    @MockitoBean
     private Brain brain;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -78,9 +90,11 @@ class AgentMovementE2ETest {
         transactionTemplate.executeWithoutResult(s -> {
             portalRepository.deleteAll();
             agentRepository.deleteAll();
-            playerRepository.deleteAll();
             locationRepository.deleteAll();
         });
+
+        // Ensure security check always passes for E2E movement calls
+        when(agentSecurity.isOwner(any(), any())).thenReturn(true);
     }
 
     @Test

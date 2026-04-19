@@ -14,11 +14,19 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.agentgierka.mmo.creature.repository.CreatureInstanceRepository;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
 
 @SpringBootTest
 @ActiveProfiles("test")
@@ -27,8 +35,13 @@ class StateSyncIntegrationTest {
     @Autowired
     private AgentRepository agentRepository;
 
-    @Autowired
+    @MockitoBean
     private AgentWorldStateRepository redisRepository;
+
+    @MockitoBean
+    private CreatureInstanceRepository creatureInstanceRepository;
+
+    private final List<AgentWorldState> fakeRedisStore = Collections.synchronizedList(new ArrayList<>());
 
     @Autowired
     private AgentWorldStateRecoveryService recoveryService;
@@ -51,7 +64,51 @@ class StateSyncIntegrationTest {
 
     @BeforeEach
     void setUp() {
-        redisRepository.deleteAll();
+        fakeRedisStore.clear();
+
+        // Stub Repository behavior
+        doAnswer(invocation -> {
+            AgentWorldState state = invocation.getArgument(0);
+            fakeRedisStore.removeIf(s -> s.getAgentId().equals(state.getAgentId()));
+            fakeRedisStore.add(state);
+            return null;
+        }).when(redisRepository).save(any(AgentWorldState.class));
+
+        // Stub saveAll
+        doAnswer(invocation -> {
+            List<AgentWorldState> states = invocation.getArgument(0);
+            for (AgentWorldState state : states) {
+                fakeRedisStore.removeIf(s -> s.getAgentId().equals(state.getAgentId()));
+                fakeRedisStore.add(state);
+            }
+            return null;
+        }).when(redisRepository).saveAll(anyList());
+
+        when(redisRepository.findById(any(UUID.class))).thenAnswer(invocation -> {
+            UUID id = invocation.getArgument(0);
+            return fakeRedisStore.stream()
+                    .filter(s -> s.getAgentId().equals(id))
+                    .findFirst()
+                    .orElse(null);
+        });
+
+        when(redisRepository.findAllActive()).thenAnswer(invocation -> 
+            fakeRedisStore.stream()
+                .filter(s -> s.getStatus() == AgentStatus.MOVING)
+                .toList()
+        );
+
+        doAnswer(invocation -> {
+            fakeRedisStore.clear();
+            return null;
+        }).when(redisRepository).deleteAll();
+        
+        doAnswer(invocation -> {
+            UUID id = invocation.getArgument(0);
+            fakeRedisStore.removeIf(s -> s.getAgentId().equals(id));
+            return null;
+        }).when(redisRepository).delete(any(UUID.class));
+
         agentRepository.deleteAll();
         portalRepository.deleteAll();
         locationRepository.deleteAll();

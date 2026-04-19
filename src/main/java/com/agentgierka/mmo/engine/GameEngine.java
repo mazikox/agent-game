@@ -12,6 +12,7 @@ import org.springframework.core.task.AsyncTaskExecutor;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
+import com.agentgierka.mmo.creature.service.SpawnService;
 import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -31,6 +32,7 @@ public class GameEngine {
     private final EngineControl engineControl;
     private final AsyncTaskExecutor taskExecutor;
     private final ApplicationEventPublisher eventPublisher;
+    private final SpawnService spawnService;
     private final Duration tickTimeout;
 
     public GameEngine(AgentWorldStateRepository agentWorldStateRepository,
@@ -38,12 +40,14 @@ public class GameEngine {
                       EngineControl engineControl,
                       @Qualifier("applicationTaskExecutor") AsyncTaskExecutor taskExecutor,
                       ApplicationEventPublisher eventPublisher,
+                      SpawnService spawnService,
                       @Value("${game.engine.tick-timeout:5s}") Duration tickTimeout) {
         this.agentWorldStateRepository = agentWorldStateRepository;
         this.agentPersistenceService = agentPersistenceService;
         this.engineControl = engineControl;
         this.taskExecutor = taskExecutor;
         this.eventPublisher = eventPublisher;
+        this.spawnService = spawnService;
         this.tickTimeout = tickTimeout;
     }
 
@@ -56,6 +60,11 @@ public class GameEngine {
             return;
         }
         processMovement();
+        try {
+            spawnService.processRespawns();
+        } catch (Exception e) {
+            log.error("Error during creature respawn processing", e);
+        }
     }
 
     private void processMovement() {

@@ -1,6 +1,7 @@
 package com.agentgierka.mmo.config;
 
 import com.agentgierka.mmo.agent.model.AgentWorldState;
+import com.agentgierka.mmo.creature.model.CreatureInstance;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
@@ -34,6 +35,15 @@ public class RedisConfig {
         template.setConnectionFactory(connectionFactory);
         template.setKeySerializer(new StringRedisSerializer());
         template.setValueSerializer(new StringRedisSerializer());
+        return template;
+    }
+
+    @Bean
+    public RedisTemplate<String, CreatureInstance> creatureInstanceTemplate(RedisConnectionFactory connectionFactory) {
+        RedisTemplate<String, CreatureInstance> template = new RedisTemplate<>();
+        template.setConnectionFactory(connectionFactory);
+        template.setKeySerializer(new StringRedisSerializer());
+        template.setValueSerializer(RedisSerializer.json());
         return template;
     }
 }
