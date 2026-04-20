@@ -29,6 +29,8 @@ public class AgentWorldState implements Serializable {
     private Integer targetY;
     private UUID currentLocationId;
     private AgentStatus status;
+    private Integer hp;
+    private Integer maxHp;
     
     @Builder.Default
     private Integer speed = 1;
@@ -50,6 +52,8 @@ public class AgentWorldState implements Serializable {
                 .targetY(agent.getTargetY())
                 .currentLocationId(agent.getCurrentLocation() != null ? agent.getCurrentLocation().getId() : null)
                 .status(agent.getStatus())
+                .hp(agent.getStats().getHp())
+                .maxHp(agent.getStats().getMaxHp())
                 .speed(agent.getSpeed())
                 .version(0)
                 .build();

@@ -119,6 +119,6 @@ class CreatureIntegrationTest {
         List<CreatureInstance> result = instanceRepository.findAllByLocationId(loc.getId());
         assertThat(result).hasSize(1);
         assertThat(result.get(0).getState()).isEqualTo(CreatureState.ALIVE);
-        assertThat(result.get(0).getInstanceId()).isNotEqualTo(instance.getInstanceId());
+        assertThat(result.get(0).getInstanceId()).isEqualTo(instance.getInstanceId());
     }
 }

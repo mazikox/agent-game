@@ -47,6 +47,13 @@ public class AgentWebSocketController {
         }
     }
 
+    @EventListener
+    public void onCombatLog(com.agentgierka.mmo.combat.event.CombatLogEvent event) {
+        String destination = "/topic/agents/" + event.agentId() + "/logs";
+        log.debug("Broadcasting combat log to {}: {}", destination, event.message());
+        messagingTemplate.convertAndSend(destination, event.message());
+    }
+
     private void broadcast(java.util.UUID agentId, String agentName, java.util.UUID locationId, int x, int y) {
         String destination = "/topic/agents/" + agentId;
         

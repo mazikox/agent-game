@@ -9,6 +9,7 @@ class CreatureInstanceTest {
     @Test
     void shouldDecreaseHpWhenTakingDamage() {
         CreatureInstance instance = CreatureInstance.builder()
+                .maxHp(100)
                 .currentHp(100)
                 .state(CreatureState.ALIVE)
                 .build();
@@ -22,6 +23,7 @@ class CreatureInstanceTest {
     @Test
     void shouldDieWhenHpReachesZero() {
         CreatureInstance instance = CreatureInstance.builder()
+                .maxHp(50)
                 .currentHp(50)
                 .state(CreatureState.ALIVE)
                 .build();
@@ -36,6 +38,7 @@ class CreatureInstanceTest {
     @Test
     void shouldClampHpAtZero() {
         CreatureInstance instance = CreatureInstance.builder()
+                .maxHp(10)
                 .currentHp(10)
                 .state(CreatureState.ALIVE)
                 .build();

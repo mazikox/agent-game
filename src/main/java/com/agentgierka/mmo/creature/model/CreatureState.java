@@ -8,5 +8,6 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 @JsonFormat(shape = JsonFormat.Shape.STRING)
 public enum CreatureState {
     ALIVE,
-    DEAD
+    DEAD,
+    IN_COMBAT
 }

@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, Image, StyleSheet } from 'react-native';
+import { View, Text, Image, StyleSheet, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { theme } from '../../theme/theme';
 import { GothicBlendedImage } from '../../components/ui/GothicBlendedImage';
@@ -21,7 +21,9 @@ export const AgentProfile = ({
   x = 0, 
   y = 0,
   currentAction,
-  hudConfig
+  hudConfig,
+  onAttackNearest,
+  onCombatAction
 }) => {
   // Safe defaults
   const dimensions = hudConfig || { 
@@ -107,6 +109,39 @@ export const AgentProfile = ({
       {currentAction && (
         <Text style={styles.actionText}>{currentAction}</Text>
       )}
+
+      {/* DEBUG COMBAT PANEL */}
+      <View style={styles.debugCombatPanel}>
+        {status !== 'IN_COMBAT' ? (
+          <TouchableOpacity 
+            style={styles.actionButton} 
+            onPress={onAttackNearest}
+          >
+            <Text style={styles.actionButtonText}>ATTACK NEAREST</Text>
+          </TouchableOpacity>
+        ) : (
+          <View style={styles.combatActionsRow}>
+            <TouchableOpacity 
+              style={[styles.actionButton, { backgroundColor: theme.colors.fantasy.blood }]} 
+              onPress={() => onCombatAction('ATTACK')}
+            >
+              <Text style={styles.actionButtonText}>ATTACK</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.actionButton, { backgroundColor: theme.colors.primary }]} 
+              onPress={() => onCombatAction('POTION')}
+            >
+              <Text style={styles.actionButtonText}>POTION</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.actionButton, { backgroundColor: theme.colors.secondary }]} 
+              onPress={() => onCombatAction('FLEE')}
+            >
+              <Text style={styles.actionButtonText}>FLEE</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
     </View>
   );
 };
@@ -183,5 +218,30 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontStyle: 'italic',
     marginTop: -5,
+  },
+  debugCombatPanel: {
+    marginTop: 10,
+    width: '100%',
+    alignItems: 'center',
+  },
+  combatActionsRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  actionButton: {
+    backgroundColor: 'rgba(26, 54, 93, 0.8)',
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(79, 209, 237, 0.4)',
+    minWidth: 100,
+    alignItems: 'center',
+  },
+  actionButtonText: {
+    color: '#fff',
+    fontSize: 10,
+    fontFamily: theme.typography.bold,
+    letterSpacing: 1,
   }
 });

@@ -22,6 +22,9 @@ class LootServiceTest {
     @Mock
     private LootTableRepository lootTableRepository;
 
+    @org.mockito.Spy
+    private java.util.Random random = new java.util.Random();
+
     @InjectMocks
     private LootService lootService;
 

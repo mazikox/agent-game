@@ -10,6 +10,7 @@ import lombok.*;
  */
 @Embeddable
 @Getter
+@Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 @Builder(toBuilder = true)
@@ -28,6 +29,12 @@ public class AgentStats {
     @Column(name = "level")
     private int level;
 
+    @Column(name = "base_damage")
+    private int baseDamage;
+
+    @Column(name = "attack_speed")
+    private int attackSpeed;
+
     /**
      * Creates initial stats for a new agent.
      */
@@ -37,6 +44,8 @@ public class AgentStats {
                 .maxHp(100)
                 .experience(0)
                 .level(1)
+                .baseDamage(15)
+                .attackSpeed(100)
                 .build();
     }
 

@@ -1,7 +1,10 @@
 package com.agentgierka.mmo.exception;
 
 import com.agentgierka.mmo.agent.exception.AgentNotFoundException;
+import com.agentgierka.mmo.agent.exception.AgentStateException;
 import com.agentgierka.mmo.agent.exception.InvalidMovementException;
+import com.agentgierka.mmo.combat.exception.CombatException;
+import com.agentgierka.mmo.creature.exception.CreatureNotFoundException;
 import com.agentgierka.mmo.world.exception.LocationNotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -43,6 +46,24 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(com.agentgierka.mmo.player.exception.PlayerAlreadyExistsException.class)
     public ResponseEntity<ErrorResponse> handlePlayerAlreadyExists(com.agentgierka.mmo.player.exception.PlayerAlreadyExistsException ex) {
         log.warn("Player already exists: {}", ex.getMessage());
+        return buildResponse(ex.getErrorCode(), ex.getMessage(), HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(CombatException.class)
+    public ResponseEntity<ErrorResponse> handleCombatException(CombatException ex) {
+        log.warn("Combat rule violation: {}", ex.getMessage());
+        return buildResponse(ex.getErrorCode(), ex.getMessage(), HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(CreatureNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleCreatureNotFound(CreatureNotFoundException ex) {
+        log.warn("Creature not found: {}", ex.getMessage());
+        return buildResponse(ex.getErrorCode(), ex.getMessage(), HttpStatus.NOT_FOUND);
+    }
+
+    @ExceptionHandler(AgentStateException.class)
+    public ResponseEntity<ErrorResponse> handleAgentStateConflict(AgentStateException ex) {
+        log.warn("Agent state conflict: {}", ex.getMessage());
         return buildResponse(ex.getErrorCode(), ex.getMessage(), HttpStatus.CONFLICT);
     }
 

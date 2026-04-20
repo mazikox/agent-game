@@ -85,7 +85,7 @@ public class SpawnService {
         }
 
         log.info("Creature {} killed.", instanceId);
-        instance.takeDamage(instance.getMaxHp());
+        instance.kill();
         creatureInstanceRepository.save(instance);
 
         List<String> drops = lootService.rollLoot(instance.getTemplateId(), instance.getLocationId());
@@ -103,8 +103,15 @@ public class SpawnService {
     private void respawn(CreatureInstance oldInstance) {
         spawnPointRepository.findById(oldInstance.getSpawnPointId()).ifPresent(point -> {
             log.info("Respawning creature: {}", oldInstance.getName());
-            creatureInstanceRepository.delete(oldInstance);
-            spawnAtPoint(point);
+            
+            int posX = point.getCenterX() + getRandomOffset(point.getWanderRadius());
+            int posY = point.getCenterY() + getRandomOffset(point.getWanderRadius());
+            
+            oldInstance.respawn(posX, posY);
+            creatureInstanceRepository.save(oldInstance);
+            
+            eventPublisher.publishEvent(new CreatureSpawnedEvent(oldInstance.getInstanceId(), oldInstance.getLocationId(), oldInstance));
+            log.debug("Respawned {} at ({}, {}) in {}", oldInstance.getName(), posX, posY, point.getLocation().getName());
         });
     }
 

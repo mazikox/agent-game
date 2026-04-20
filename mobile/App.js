@@ -28,7 +28,9 @@ function GameContent() {
     loading, 
     error, 
     connected, 
-    handleCommand 
+    handleCommand,
+    attackNearest,
+    performCombatAction 
   } = useAgentState();
 
   const { width } = useWindowDimensions();
@@ -87,6 +89,8 @@ function GameContent() {
                 currentTask={agent?.currentTask}
                 currentAction={agent?.currentActionDescription}
                 hudConfig={currentHudConfig}
+                onAttackNearest={attackNearest}
+                onCombatAction={performCombatAction}
               />
             </HUDElement>
 

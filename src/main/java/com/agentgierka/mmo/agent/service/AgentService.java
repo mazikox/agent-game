@@ -2,6 +2,7 @@ package com.agentgierka.mmo.agent.service;
 
 import com.agentgierka.mmo.agent.event.GoalAssignedEvent;
 import com.agentgierka.mmo.agent.exception.AgentNotFoundException;
+import com.agentgierka.mmo.agent.exception.AgentStateException;
 import com.agentgierka.mmo.agent.exception.InvalidMovementException;
 import com.agentgierka.mmo.agent.model.Agent;
 import com.agentgierka.mmo.agent.model.AgentStatus;
@@ -83,6 +84,10 @@ public class AgentService {
     public Agent moveTo(UUID agentId, Integer targetX, Integer targetY) {
         Agent agent = agentRepository.findById(agentId)
                 .orElseThrow(() -> new AgentNotFoundException(agentId.toString()));
+
+        if (agent.getStatus() == AgentStatus.IN_COMBAT) {
+            throw new AgentStateException("Cannot move manually while in combat. Use FLEE first.");
+        }
 
         if (agent.getCurrentLocation() != null) {
             validateBounds(agent, targetX, targetY);

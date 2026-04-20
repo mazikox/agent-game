@@ -13,5 +13,7 @@ public enum AgentStatus {
     /** Agent is performing a task (e.g., gathering, crafting). */
     WORKING, 
     /** Agent is recovering energy or HP. */
-    RESTING
+    RESTING,
+    /** Agent is locked in combat and cannot perform other actions until it ends. */
+    IN_COMBAT
 }

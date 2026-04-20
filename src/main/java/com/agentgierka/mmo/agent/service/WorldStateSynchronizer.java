@@ -1,6 +1,7 @@
 package com.agentgierka.mmo.agent.service;
 
 import com.agentgierka.mmo.agent.event.AgentArrivedEvent;
+import com.agentgierka.mmo.agent.event.AgentStateUpdatedEvent;
 import com.agentgierka.mmo.agent.model.Agent;
 import com.agentgierka.mmo.agent.model.AgentWorldState;
 import com.agentgierka.mmo.agent.model.MovementType;
@@ -25,18 +26,9 @@ public class WorldStateSynchronizer {
 
     public void syncMovementAfterCommit(Agent agent) {
         executeAfterCommit(() -> {
-            AgentWorldState worldState = AgentWorldState.builder()
-                    .agentId(agent.getId())
-                    .agentName(agent.getName())
-                    .x(agent.getX())
-                    .y(agent.getY())
-                    .targetX(agent.getTargetX())
-                    .targetY(agent.getTargetY())
-                    .currentLocationId(agent.getCurrentLocation() != null ? agent.getCurrentLocation().getId() : null)
-                    .status(agent.getStatus())
-                    .speed(agent.getSpeed())
-                    .build();
+            AgentWorldState worldState = AgentWorldState.fromAgent(agent);
             agentWorldStateRepository.save(worldState);
+            eventPublisher.publishEvent(new AgentStateUpdatedEvent(worldState));
         });
     }
 

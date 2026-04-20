@@ -17,7 +17,7 @@ import java.util.stream.Collectors;
 public class LootService {
 
     private final LootTableRepository lootTableRepository;
-    private final Random random = new Random();
+    private final Random random;
 
     @Transactional(readOnly = true)
     public List<String> rollLoot(UUID templateId, UUID locationId) {

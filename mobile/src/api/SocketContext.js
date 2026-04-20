@@ -67,6 +67,19 @@ export const SocketProvider = ({ children }) => {
     return subscription;
   };
 
+  const subscribeToCombatLogs = (agentId, onLog) => {
+    if (!stompClient.current || !connected) return null;
+
+    const topic = `/topic/agents/${agentId}/logs`;
+    console.log(`Subscribing to combat logs: ${topic}`);
+
+    const subscription = stompClient.current.subscribe(topic, (message) => {
+      onLog(message.body); // message.body is just the raw string log
+    });
+
+    return subscription;
+  };
+
   const unsubscribeFromAgent = (agentId) => {
     if (subscriptions.current[agentId]) {
       subscriptions.current[agentId].unsubscribe();
@@ -108,7 +121,15 @@ export const SocketProvider = ({ children }) => {
   }, []);
 
   return (
-    <SocketContext.Provider value={{ connected, connect, disconnect, subscribeToAgent, unsubscribeFromAgent, subscribeToLocationCreatures }}>
+    <SocketContext.Provider value={{ 
+      connected, 
+      connect, 
+      disconnect, 
+      subscribeToAgent, 
+      unsubscribeFromAgent, 
+      subscribeToLocationCreatures,
+      subscribeToCombatLogs
+    }}>
       {children}
     </SocketContext.Provider>
   );

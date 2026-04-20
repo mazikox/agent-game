@@ -62,9 +62,12 @@ class SpawnServiceTest {
 
         spawnService.processRespawns();
 
-        verify(creatureInstanceRepository).delete(deadCreature);
-        verify(creatureInstanceRepository).save(any(CreatureInstance.class));
+        verify(creatureInstanceRepository, never()).delete(any());
+        verify(creatureInstanceRepository).save(deadCreature);
         verify(eventPublisher).publishEvent(any(CreatureSpawnedEvent.class));
+        
+        assert deadCreature.getState() == CreatureState.ALIVE;
+        assert deadCreature.getDiedAt() == null;
     }
 
     @Test
@@ -86,7 +89,7 @@ class SpawnServiceTest {
 
     @Test
     void shouldKeepSpawnWithinWanderRadius() {
-        CreatureTemplate template = CreatureTemplate.builder().build();
+        CreatureTemplate template = CreatureTemplate.builder().level(1).baseHp(1).aggroRadius(1).build();
         Location location = Location.builder().id(UUID.randomUUID()).build();
         SpawnPoint point = SpawnPoint.builder()
                 .id(UUID.randomUUID())

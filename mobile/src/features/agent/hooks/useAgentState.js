@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { agentApi } from '../../../api/agentApi';
+import { combatApi } from '../../../api/combatApi';
 import { useSocket } from '../../../api/SocketContext';
 
 /**
@@ -7,7 +8,7 @@ import { useSocket } from '../../../api/SocketContext';
  * Encapsulates all WebSocket and API orchestration logic.
  */
 export function useAgentState() {
-  const { connected, connect, subscribeToAgent, subscribeToLocationCreatures } = useSocket();
+  const { connected, connect, subscribeToAgent, subscribeToLocationCreatures, subscribeToCombatLogs } = useSocket();
   const [agent, setAgent] = useState(null);
   const [location, setLocation] = useState(null);
   const [creatures, setCreatures] = useState([]);
@@ -76,6 +77,8 @@ export function useAgentState() {
           y: updatedState.y,
           status: updatedState.status,
           currentLocationId: nextLocId,
+          maxHp: updatedState.maxHp || prev?.maxHp || 100,
+          hp: updatedState.hp !== undefined ? updatedState.hp : prev?.hp,
           currentActionDescription: updatedState.currentActionDescription
         };
       });
@@ -85,8 +88,15 @@ export function useAgentState() {
       }
     });
 
-    return () => subscription.unsubscribe();
-  }, [agent?.id, connected, subscribeToAgent, addLog]);
+    const combatSubscription = subscribeToCombatLogs(agent.id, (log) => {
+      addLog(log);
+    });
+
+    return () => {
+      subscription.unsubscribe();
+      combatSubscription.unsubscribe();
+    };
+  }, [agent?.id, connected, subscribeToAgent, subscribeToCombatLogs, addLog]);
 
   // 5. Lifecycle: Map / Location details sync and Creatures
   useEffect(() => {
@@ -153,6 +163,30 @@ export function useAgentState() {
     }
   };
 
+  const attackNearest = async () => {
+    if (!agent) return;
+    if (creatures.length === 0) {
+      addLog("No enemies nearby to attack.");
+      return;
+    }
+    const target = creatures[0];
+    try {
+      addLog(`Initiating combat with ${target.name}...`);
+      await combatApi.initiate(agent.id, target.instanceId);
+    } catch (err) {
+      addLog("Combat failed: " + (err.response?.data?.message || err.message));
+    }
+  };
+
+  const performCombatAction = async (type) => {
+    if (!agent) return;
+    try {
+      await combatApi.executeAction(agent.id, type);
+    } catch (err) {
+      addLog("Action failed: " + (err.response?.data?.message || err.message));
+    }
+  };
+
   return {
     agent,
     location,
@@ -161,6 +195,8 @@ export function useAgentState() {
     error,
     connected,
     handleCommand,
+    attackNearest,
+    performCombatAction,
     creatures
   };
 }
