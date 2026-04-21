@@ -15,6 +15,7 @@ import com.agentgierka.mmo.creature.exception.CreatureNotFoundException;
 import com.agentgierka.mmo.creature.model.CreatureInstance;
 import com.agentgierka.mmo.creature.model.CreatureState;
 import com.agentgierka.mmo.creature.repository.CreatureInstanceRepository;
+import com.agentgierka.mmo.creature.service.SpawnService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -34,6 +35,7 @@ public class CombatService {
     private final CombatRepository combatRepository;
     private final AgentRepository agentRepository;
     private final CreatureInstanceRepository creatureRepository;
+    private final SpawnService spawnService;
     private final WorldStateSynchronizer worldStateSynchronizer;
     private final ApplicationEventPublisher eventPublisher;
 
@@ -179,10 +181,13 @@ public class CombatService {
         combat.finishCombat();
         agent.updateStatus(AgentStatus.IDLE, "Victory over " + creature.getName());
         agent.gainExperience(creature.getExperienceReward());
+        
+        // Trigger death ceremony (WebSocket events, loot)
+        spawnService.killCreature(creature.getInstanceId());
+        
         String msg = "Combat Victory: " + agent.getName() + " defeated " + creature.getName();
         log.info(msg);
         eventPublisher.publishEvent(new CombatLogEvent(agent.getId(), msg));
-        // Loot handling will be implemented in future tasks
     }
 
     private void handleDefeat(CombatInstance combat, Agent agent, CreatureInstance creature) {

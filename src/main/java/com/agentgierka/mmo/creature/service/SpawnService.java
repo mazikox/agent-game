@@ -80,7 +80,7 @@ public class SpawnService {
     @Transactional
     public List<String> killCreature(UUID instanceId) {
         CreatureInstance instance = creatureInstanceRepository.findById(instanceId);
-        if (instance == null || instance.isDead()) {
+        if (instance == null) {
             return List.of();
         }
 

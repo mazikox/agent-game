@@ -164,14 +164,25 @@ export function useAgentState() {
   };
 
   const attackNearest = async () => {
-    if (!agent) return;
-    if (creatures.length === 0) {
-      addLog("No enemies nearby to attack.");
+    if (!agent || !creatures) return;
+
+    // Filter only living enemies and calculate distances
+    const targets = creatures
+      .filter(c => c.state === 'ALIVE' || c.currentHp > 0)
+      .map(c => ({
+        ...c,
+        distance: Math.sqrt(Math.pow(c.x - agent.x, 2) + Math.pow(c.y - agent.y, 2))
+      }))
+      .sort((a, b) => a.distance - b.distance);
+
+    if (targets.length === 0) {
+      addLog("No living enemies nearby to attack.");
       return;
     }
-    const target = creatures[0];
+
+    const target = targets[0];
     try {
-      addLog(`Initiating combat with ${target.name}...`);
+      addLog(`Initiating combat with ${target.name} (dist: ${Math.round(target.distance)})...`);
       await combatApi.initiate(agent.id, target.instanceId);
     } catch (err) {
       addLog("Combat failed: " + (err.response?.data?.message || err.message));
@@ -197,6 +208,6 @@ export function useAgentState() {
     handleCommand,
     attackNearest,
     performCombatAction,
-    creatures
+    creatures: (creatures || []).filter(c => c.state === 'ALIVE' || c.state === 'IN_COMBAT')
   };
 }

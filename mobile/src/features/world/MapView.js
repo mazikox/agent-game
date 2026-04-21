@@ -56,37 +56,63 @@ export const MapView = ({ agentX, agentY, mapWidth, mapHeight, portals = [], cre
   const config = MAP_CONFIG[locationName] || MAP_CONFIG['default'];
   const [currentMap, setCurrentMap] = useState(config.uri);
   const [currentRatio, setCurrentRatio] = useState(config.ratio);
+  const [currentImgW, setCurrentImgW] = useState(1024); // Startowa naturalna wartość przed odpaleniem onLoad
+  const [currentImgH, setCurrentImgH] = useState(1024);
   const [containerLayout, setContainerLayout] = useState({ width: 0, height: 0 });
   const fadeAnim = useRef(new Animated.Value(1)).current;
+  const [viewportLayout, setViewportLayout] = useState({ width: 0, height: 0 });
   
-  // Best Fit Algorithm: Ensure the INTERNAL map image respects the aspect ratio
+  // Jednolity rozmiar ramki - niezależnie od załadowanej mapy, utrzymujemy stały układ i wielkość
   const canvasSize = useMemo(() => {
     const { width: cw, height: ch } = containerLayout;
     if (cw === 0 || ch === 0) return { width: '100%', height: '100%' };
 
-    // The header and padding offsets from MapWindowFrame styles
     const HEADER_OFFSET = 44; // 38px header + 6px total vertical padding
     const WIDTH_OFFSET = 3;   // 3px left padding (right is 0)
 
-    const ratio = currentRatio;
+    // Wymuszamy stałe ratio okienka dla wszystkich map (1.0 = kwadrat, idealnie pod stałe wycięcie 800x800)
+    // Dzięki temu rozmiar ramki w grze NIGDY się nie zmieni przy zmianie mapy.
+    const FIXED_RATIO = 1.0; 
     
-    // Calculate total component size based on its internal map ratio
     let targetWidth = cw;
-    let targetHeight = ((cw - WIDTH_OFFSET) / ratio) + HEADER_OFFSET;
+    let targetHeight = ((cw - WIDTH_OFFSET) / FIXED_RATIO) + HEADER_OFFSET;
 
-    // If perfectly filling width makes it too tall for the viewport, scale by height instead
     if (targetHeight > ch) {
       targetHeight = ch;
-      targetWidth = ((ch - HEADER_OFFSET) * ratio) + WIDTH_OFFSET;
+      targetWidth = ((ch - HEADER_OFFSET) * FIXED_RATIO) + WIDTH_OFFSET;
     }
 
     return { width: targetWidth, height: targetHeight };
-  }, [containerLayout, currentRatio]);
+  }, [containerLayout]);
 
-  const agentPos = useRef(new Animated.ValueXY({ 
-      x: (agentX / mapWidth) * 100, 
-      y: (agentY / mapHeight) * 100 
+  // Przesunięcie gracza w układzie procentowym (0-100%) względem wielkości mapy logicznej
+  const agentPosPerc = useRef(new Animated.ValueXY({ 
+      x: (agentX / Math.max(mapWidth, 1)) * 100, 
+      y: (agentY / Math.max(mapHeight, 1)) * 100 
   })).current;
+
+  // Wymiary oryginalnego zdjęcia pobrane statycznie z MAP_CONFIG (omija brak Image.resolveAssetSource na platforrmie Web)
+  const imgW = currentImgW;
+  const imgH = currentImgH;
+
+  // Kamera: wewnątrz viewportu (ramki) wyświetlamy obszar zawsze równy 800 fizycznym pikselom oryginalnego zdjęcia.
+  const CAMERA_PIXELS = 800;
+  const scale = viewportLayout.width > 0 ? (viewportLayout.width / CAMERA_PIXELS) : 1;
+
+  // Wymiary wirtualnej mapy zachowują proporcje zdjęcia ale ich skala jest narzucona przez ramkę
+  const worldWidth = imgW * scale;
+  const worldHeight = imgH * scale;
+
+  // Kamera centrująca podąża za procentem wyliczonej, sztucznie powiększonej wirtualnej planszy
+  const cameraX = agentPosPerc.x.interpolate({
+      inputRange: [0, 100],
+      outputRange: [viewportLayout.width / 2, viewportLayout.width / 2 - worldWidth]
+  });
+
+  const cameraY = agentPosPerc.y.interpolate({
+      inputRange: [0, 100],
+      outputRange: [viewportLayout.height / 2, viewportLayout.height / 2 - worldHeight]
+  });
 
   useEffect(() => {
     const nextConfig = MAP_CONFIG[locationName] || MAP_CONFIG['default'];
@@ -100,15 +126,15 @@ export const MapView = ({ agentX, agentY, mapWidth, mapHeight, portals = [], cre
   }, [locationName, currentMap, fadeAnim]);
 
   useEffect(() => {
-    Animated.timing(agentPos, {
+    Animated.timing(agentPosPerc, {
       toValue: { 
-          x: (agentX / mapWidth) * 100, 
-          y: (agentY / mapHeight) * 100 
+          x: (agentX / Math.max(mapWidth, 1)) * 100, 
+          y: (agentY / Math.max(mapHeight, 1)) * 100 
       },
       duration: 1000, 
       useNativeDriver: false,
     }).start();
-  }, [agentX, agentY, mapWidth, mapHeight, agentPos]);
+  }, [agentX, agentY, mapWidth, mapHeight, agentPosPerc]);
 
   const onViewportLayout = (event) => {
     const { width, height } = event.nativeEvent.layout;
@@ -126,72 +152,101 @@ export const MapView = ({ agentX, agentY, mapWidth, mapHeight, portals = [], cre
           title={locationName} 
           style={[styles.mapWindow, canvasSize]}
         >
-          {/* The Measured Canvas: Strictly follows calculated 'Best Fit' pixels */}
-          <View style={[styles.canvas, { width: '100%', height: '100%' }]}>
+          <View 
+              style={[styles.canvas, { width: '100%', height: '100%' }]}
+              onLayout={(e) => setViewportLayout(e.nativeEvent.layout)}
+          >
+              {/* Rzeczywista powiększona mapa z efektem zoom-in na wycięty fragment */}
+              <Animated.View style={[
+                  {
+                      position: 'absolute',
+                      left: 0, top: 0,
+                      width: worldWidth > 0 ? worldWidth : '100%', 
+                      height: worldHeight > 0 ? worldHeight : '100%',
+                      transform: [
+                          { translateX: cameraX },
+                          { translateY: cameraY }
+                      ]
+                  }
+              ]}>
+                  <ImageBackground 
+                      source={currentMap}
+                      style={styles.imageLayer}
+                      resizeMode="stretch" 
+                      onLoad={(e) => {
+                          // Na Webie React Native pakuje event z HTML, więc precyzyjnie szukamy naturalWidth DOM'u
+                          const ev = e.nativeEvent || {};
+                          const target = ev.target || {};
+                          const source = ev.source || {};
 
-              <ImageBackground 
-                  source={currentMap}
-                  style={styles.imageLayer}
-                  resizeMode="stretch" 
-              >
-                  <View style={styles.worldOverlay}>
-                      {portals.map((portal, index) => (
-                          <View 
-                              key={`portal-${index}`} 
-                              style={[
-                                  styles.portalContainer, 
-                                  { 
-                                      left: `${(portal.sourceX / mapWidth) * 100}%`, 
-                                      top: `${(portal.sourceY / mapHeight) * 100}%` 
-                                  }
-                              ]}
-                          >
-                              <PulseIcon>
-                                  <View style={styles.portalIconWrapper}>
-                                      <Atom size={20} color={theme.colors.primary} strokeWidth={2.5} />
-                                  </View>
-                              </PulseIcon>
-                              <Text style={styles.portalLabel}>{portal.targetLocationName}</Text>
-                          </View>
-                      ))}
-
-                      {creatures.map((creature) => (
-                          <View
-                              key={creature.instanceId}
-                              style={[
-                                  styles.creatureMarker,
-                                  {
-                                      left: `${(Number(creature.x) / mapWidth) * 100}%`,
-                                      top: `${(Number(creature.y) / mapHeight) * 100}%`
-                                  }
-                              ]}
-                          />
-                      ))}
-
-                      <Animated.View style={[
-                          styles.agentMarker,
-                          {
-                              left: agentPos.x.interpolate({
-                                  inputRange: [0, 100],
-                                  outputRange: ['0%', '100%']
-                              }),
-                              top: agentPos.y.interpolate({
-                                  inputRange: [0, 100],
-                                  outputRange: ['0%', '100%']
-                              })
+                          const w = source.width || ev.width || target.naturalWidth || target.clientWidth;
+                          const h = source.height || ev.height || target.naturalHeight || target.clientHeight;
+                          
+                          if (w && h && !isNaN(w) && !isNaN(h) && w > 0) {
+                              setCurrentImgW(Number(w));
+                              setCurrentImgH(Number(h));
                           }
-                      ]}>
-                          <View style={styles.pulseRing} />
-                          <View style={styles.agentTag}>
-                              <Text style={styles.agentTagText}>{agentName}</Text>
-                              <Text style={styles.agentCoords}>({agentX}, {agentY})</Text>
-                          </View>
-                          <View style={styles.pinWrapper}>
-                              <MapPin size={28} color={theme.colors.accent} strokeWidth={3} fill={theme.colors.accent + '20'} />
-                          </View>
-                      </Animated.View>
-                  </View>
-              </ImageBackground>
+                      }}
+                  >
+                      <View style={styles.worldOverlay}>
+                          {portals.map((portal, index) => (
+                              <View 
+                                  key={`portal-${index}`} 
+                                  style={[
+                                      styles.portalContainer, 
+                                      { 
+                                          left: `${(portal.sourceX / Math.max(mapWidth, 1)) * 100}%`, 
+                                          top: `${(portal.sourceY / Math.max(mapHeight, 1)) * 100}%` 
+                                      }
+                                  ]}
+                              >
+                                  <PulseIcon>
+                                      <View style={styles.portalIconWrapper}>
+                                          <Atom size={20} color={theme.colors.primary} strokeWidth={2.5} />
+                                      </View>
+                                  </PulseIcon>
+                                  <Text style={styles.portalLabel}>{portal.targetLocationName}</Text>
+                              </View>
+                          ))}
+
+                          {creatures.map((creature) => (
+                              <View
+                                  key={creature.instanceId}
+                                  style={[
+                                      styles.creatureMarker,
+                                      {
+                                          left: `${(Number(creature.x) / Math.max(mapWidth, 1)) * 100}%`,
+                                          top: `${(Number(creature.y) / Math.max(mapHeight, 1)) * 100}%`
+                                      }
+                                  ]}
+                              />
+                          ))}
+
+                          <Animated.View style={[
+                              styles.agentMarker,
+                              {
+                                  left: agentPosPerc.x.interpolate({
+                                      inputRange: [0, 100],
+                                      outputRange: ['0%', '100%']
+                                  }),
+                                  top: agentPosPerc.y.interpolate({
+                                      inputRange: [0, 100],
+                                      outputRange: ['0%', '100%']
+                                  })
+                              }
+                          ]}>
+                              <View style={styles.pulseRing} />
+                              <View style={styles.agentTag}>
+                                  <Text style={styles.agentTagText}>{agentName}</Text>
+                                  <Text style={styles.agentCoords}>({agentX}, {agentY})</Text>
+                              </View>
+                              <View style={styles.pinWrapper}>
+                                  <MapPin size={28} color={theme.colors.accent} strokeWidth={3} fill={theme.colors.accent + '20'} />
+                              </View>
+                          </Animated.View>
+                      </View>
+                  </ImageBackground>
+              </Animated.View>
           </View>
         </MapWindowFrame>
       </Animated.View>
