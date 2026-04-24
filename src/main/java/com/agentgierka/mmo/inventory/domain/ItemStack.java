@@ -58,6 +58,14 @@ public class ItemStack {
         return quantity;
     }
 
+    public void setQuantity(int quantity) {
+        if (quantity < 0) {
+            throw new IllegalArgumentException("Quantity cannot be negative");
+        }
+        // We allow setting to 0, which means the stack should be removed by the inventory
+        this.quantity = Math.min(quantity, definition.maxStack());
+    }
+
     private void validateQuantity(int quantity, int maxStack) {
         if (quantity <= 0 || quantity > maxStack) {
             throw new IllegalArgumentException("Invalid quantity for item: " + quantity);

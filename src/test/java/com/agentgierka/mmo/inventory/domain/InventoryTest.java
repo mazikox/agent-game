@@ -4,6 +4,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -27,7 +28,7 @@ class InventoryTest {
     void shouldMoveSmallItem() {
         // given
         ItemStack potion = new ItemStack(UUID.randomUUID(), potionDef, 1);
-        addItem(0, potion);
+        inventory.placeItem(0, potion);
 
         // when
         InventoryResult result = inventory.processMove(0, 1);
@@ -39,14 +40,109 @@ class InventoryTest {
     }
 
     @Test
-    @DisplayName("Should fail when moving item out of bounds (right edge wrap-around)")
-    void shouldFailOutOfBoundsRight() {
-        // given: 2x2 item at index 3 (slots 3,4,8,9) in 5-wide grid
-        ItemDefinition bigItemDef = new ItemDefinition("BIG", "Big", 2, 2, 1);
-        ItemStack bigItem = new ItemStack(UUID.randomUUID(), bigItemDef, 1);
-        addItem(0, bigItem);
+    @DisplayName("Should swap two 1x1 items positions")
+    void shouldSwapTwoSmallItems() {
+        // given
+        ItemDefinition ringDef = new ItemDefinition("RING", "Ring", 1, 1, 1);
+        ItemStack ringA = new ItemStack(UUID.randomUUID(), ringDef, 1);
+        ItemStack ringB = new ItemStack(UUID.randomUUID(), ringDef, 1);
+        inventory.placeItem(0, ringA);
+        inventory.placeItem(1, ringB);
 
-        // when: move to index 4 (would occupy 4, 5 <-- 5 is wrap around to next row)
+        // when
+        InventoryResult result = inventory.processMove(0, 1);
+
+        // then
+        assertThat(result).isInstanceOf(InventoryResult.Success.class);
+        assertThat(inventory.getAnchoredItems().get(1)).isSameAs(ringA);
+        assertThat(inventory.getAnchoredItems().get(0)).isSameAs(ringB);
+    }
+
+    @Test
+    @DisplayName("Should swap big item (2x3) with small item (1x1)")
+    void shouldSwapBigWithSmall() {
+        // given
+        ItemDefinition armorDef = new ItemDefinition("ARMOR", "Armor", 2, 3, 1);
+        ItemStack armor = new ItemStack(UUID.randomUUID(), armorDef, 1);
+        ItemStack potion = new ItemStack(UUID.randomUUID(), potionDef, 1);
+        
+        inventory.placeItem(0, armor);   
+        inventory.placeItem(14, potion); 
+
+        // when: Move armor to 13.
+        InventoryResult result = inventory.processMove(0, 13);
+
+        // then
+        assertThat(result).isInstanceOf(InventoryResult.Success.class);
+        assertThat(inventory.getAnchoredItems().get(13)).isSameAs(armor);
+        assertThat(inventory.getAnchoredItems().get(0)).isSameAs(potion);
+    }
+
+    @Test
+    @DisplayName("Should fail swap when overlapping with multiple items")
+    void shouldFailSwapWithMultipleItems() {
+        // given
+        ItemDefinition armorDef = new ItemDefinition("ARMOR", "Armor", 2, 2, 1);
+        ItemStack armor = new ItemStack(UUID.randomUUID(), armorDef, 1);
+        ItemStack potion1 = new ItemStack(UUID.randomUUID(), potionDef, 1);
+        ItemStack potion2 = new ItemStack(UUID.randomUUID(), potionDef, 1);
+        
+        inventory.placeItem(0, armor);
+        inventory.placeItem(10, potion1);
+        inventory.placeItem(11, potion2);
+
+        // when: Move armor to 10. Overlaps with both potion1(10) and potion2(11)
+        InventoryResult result = inventory.processMove(0, 10);
+
+        // then
+        assertThat(result).isInstanceOf(InventoryResult.Collision.class);
+    }
+
+    @Test
+    @DisplayName("Should merge stackable items of same type")
+    void shouldMergeStacks() {
+        // given
+        ItemStack potion1 = new ItemStack(UUID.randomUUID(), potionDef, 5);
+        ItemStack potion2 = new ItemStack(UUID.randomUUID(), potionDef, 10);
+        inventory.placeItem(0, potion1);
+        inventory.placeItem(1, potion2);
+
+        // when
+        InventoryResult result = inventory.processMove(0, 1);
+
+        // then
+        assertThat(result).isInstanceOf(InventoryResult.Success.class);
+        assertThat(inventory.getAnchoredItems().get(1).getQuantity()).isEqualTo(15);
+        assertThat(inventory.getAnchoredItems()).doesNotContainKey(0);
+    }
+
+    @Test
+    @DisplayName("Should partial merge when exceeding max stack size")
+    void shouldPartialMerge() {
+        // given
+        ItemStack potion1 = new ItemStack(UUID.randomUUID(), potionDef, 15);
+        ItemStack potion2 = new ItemStack(UUID.randomUUID(), potionDef, 10); // max is 20
+        inventory.placeItem(0, potion1);
+        inventory.placeItem(1, potion2);
+
+        // when
+        InventoryResult result = inventory.processMove(0, 1);
+
+        // then
+        assertThat(result).isInstanceOf(InventoryResult.Success.class);
+        assertThat(inventory.getAnchoredItems().get(1).getQuantity()).isEqualTo(20);
+        assertThat(inventory.getAnchoredItems().get(0).getQuantity()).isEqualTo(5);
+    }
+
+    @Test
+    @DisplayName("Should fail when moving item out of bounds")
+    void shouldFailOutOfBounds() {
+        // given
+        ItemDefinition bigDef = new ItemDefinition("BIG", "Big", 2, 2, 1);
+        ItemStack bigItem = new ItemStack(UUID.randomUUID(), bigDef, 1);
+        inventory.placeItem(0, bigItem);
+
+        // when: Moving 2x2 to index 4 (right edge)
         InventoryResult result = inventory.processMove(0, 4);
 
         // then
@@ -54,77 +150,92 @@ class InventoryTest {
     }
 
     @Test
-    @DisplayName("Should detect collision with another item's occupied fields")
-    void shouldDetectCollision() {
+    @DisplayName("Should find first empty slot for 1x1 item")
+    void shouldFindEmptySlot() {
         // given
-        ItemStack sword = new ItemStack(UUID.randomUUID(), swordDef, 1);
-        ItemStack potion = new ItemStack(UUID.randomUUID(), potionDef, 1);
-        
-        addItem(0, sword);  // occupies 0, 5, 10
-        addItem(1, potion); // occupies 1
-
-        // when: move potion to 5 (which is occupied by the middle of the sword)
-        InventoryResult result = inventory.processMove(1, 5);
-
-        // then
-        assertThat(result).isInstanceOf(InventoryResult.Collision.class);
-        InventoryResult.Collision collision = (InventoryResult.Collision) result;
-        assertThat(collision.collidingSlots()).contains(5);
-    }
-
-    @Test
-    @DisplayName("Should allow moving item to its current position (no-op)")
-    void shouldAllowMoveToSamePosition() {
-        // given
-        ItemStack potion = new ItemStack(UUID.randomUUID(), potionDef, 1);
-        addItem(5, potion);
+        ItemDefinition ringDef = new ItemDefinition("RING", "Ring", 1, 1, 1);
+        ItemStack ring1 = new ItemStack(UUID.randomUUID(), ringDef, 1);
+        ItemStack ring2 = new ItemStack(UUID.randomUUID(), ringDef, 1);
+        inventory.placeItem(0, ring1);
 
         // when
-        InventoryResult result = inventory.processMove(5, 5);
+        InventoryResult result = inventory.addItem(ring2);
 
         // then
         assertThat(result).isInstanceOf(InventoryResult.Success.class);
-        assertThat(inventory.getAnchoredItems()).containsEntry(5, potion);
+        assertThat(inventory.getAnchoredItems().get(1)).isSameAs(ring2);
     }
 
-    // Helper to bypass lack of 'addItem' method in current Inventory implementation
-    // while maintaining occupiedSlots invariants.
-    private void addItem(int index, ItemStack item) {
-        // This simulates what a 'loot' or 'load' logic would do.
-        // We'll refactor this once Inventory.java gets an addItem method.
-        var field = reflectAnchoredItems();
-        field.put(index, item);
-        inventory.processMove(index, index); // Hack to trigger occupiedSlots calculation via atomic move logic
-        // Wait, processMove(index, index) returns Success and does nothing.
-        // Let's just manually fill it for now to keep it simple.
-        calculateAndAddOccupied(index, item);
+    @Test
+    @DisplayName("Should find space for 1x3 sword when first slots are occupied")
+    void shouldFindSpaceForBigItem() {
+        // given
+        ItemDefinition ringDef = new ItemDefinition("RING", "Ring", 1, 1, 1);
+        inventory.placeItem(0, new ItemStack(UUID.randomUUID(), ringDef, 1));
+        inventory.placeItem(1, new ItemStack(UUID.randomUUID(), ringDef, 1));
+        
+        ItemStack sword = new ItemStack(UUID.randomUUID(), swordDef, 1);
+
+        // when
+        InventoryResult result = inventory.addItem(sword);
+
+        // then
+        assertThat(result).isInstanceOf(InventoryResult.Success.class);
+        assertThat(inventory.getAnchoredItems().get(2)).isSameAs(sword);
     }
 
-    private void calculateAndAddOccupied(int index, ItemStack item) {
-        int col = index % 5;
-        int row = index / 5;
-        for (int r = 0; r < item.getHeight(); r++) {
-            for (int c = 0; c < item.getWidth(); c++) {
-                reflectOccupiedSlots().add((row + r) * 5 + (col + c));
-            }
-        }
+    @Test
+    @DisplayName("Should automatically stack item when picking up")
+    void shouldAutoStackOnPickup() {
+        // given
+        ItemStack existingPotion = new ItemStack(UUID.randomUUID(), potionDef, 5);
+        inventory.placeItem(10, existingPotion);
+        
+        ItemStack newPotion = new ItemStack(UUID.randomUUID(), potionDef, 5);
+
+        // when
+        InventoryResult result = inventory.addItem(newPotion);
+
+        // then
+        assertThat(result).isInstanceOf(InventoryResult.Success.class);
+        assertThat(existingPotion.getQuantity()).isEqualTo(10);
+        assertThat(inventory.getAnchoredItems().values()).hasSize(1);
     }
 
-    @SuppressWarnings("unchecked")
-    private java.util.Map<Integer, ItemStack> reflectAnchoredItems() {
-        try {
-            var f = Inventory.class.getDeclaredField("anchoredItems");
-            f.setAccessible(true);
-            return (java.util.Map<Integer, ItemStack>) f.get(inventory);
-        } catch (Exception e) { throw new RuntimeException(e); }
+    @Test
+    @DisplayName("Should fail to add item when no space is available")
+    void shouldFailWhenFull() {
+        // given
+        ItemDefinition ringDef = new ItemDefinition("RING", "Ring", 1, 1, 1);
+        Inventory tinyInventory = new Inventory(1, 1);
+        tinyInventory.placeItem(0, new ItemStack(UUID.randomUUID(), ringDef, 1));
+        
+        ItemStack anotherItem = new ItemStack(UUID.randomUUID(), ringDef, 1);
+
+        // when
+        InventoryResult result = tinyInventory.addItem(anotherItem);
+
+        // then
+        assertThat(result).isInstanceOf(InventoryResult.NoSpace.class);
     }
 
-    @SuppressWarnings("unchecked")
-    private java.util.Set<Integer> reflectOccupiedSlots() {
-        try {
-            var f = Inventory.class.getDeclaredField("occupiedSlots");
-            f.setAccessible(true);
-            return (java.util.Set<Integer>) f.get(inventory);
-        } catch (Exception e) { throw new RuntimeException(e); }
+    @Test
+    @DisplayName("Should successfully remove item and free up slots")
+    void shouldRemoveItem() {
+        // given
+        ItemStack potion = new ItemStack(UUID.randomUUID(), potionDef, 1);
+        inventory.placeItem(0, potion);
+        assertThat(inventory.getAnchoredItems()).containsKey(0);
+
+        // when
+        Optional<ItemStack> removed = inventory.removeItem(0);
+
+        // then
+        assertThat(removed).isPresent();
+        assertThat(inventory.getAnchoredItems()).isEmpty();
+        // Verify slots are freed
+        ItemStack anotherPotion = new ItemStack(UUID.randomUUID(), potionDef, 1);
+        assertThat(inventory.addItem(anotherPotion)).isInstanceOf(InventoryResult.Success.class);
+        assertThat(inventory.getAnchoredItems()).containsKey(0);
     }
 }

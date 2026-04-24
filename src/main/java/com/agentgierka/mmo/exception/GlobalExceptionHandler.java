@@ -13,6 +13,10 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.access.AccessDeniedException;
+import com.agentgierka.mmo.inventory.application.InventoryNotFoundException;
+import com.agentgierka.mmo.inventory.exception.InventoryException;
+import com.agentgierka.mmo.player.exception.PlayerAlreadyExistsException;
 
 import java.time.LocalDateTime;
 
@@ -43,8 +47,8 @@ public class GlobalExceptionHandler {
         return buildResponse(ex.getErrorCode(), ex.getMessage(), HttpStatus.BAD_REQUEST);
     }
 
-    @ExceptionHandler(com.agentgierka.mmo.player.exception.PlayerAlreadyExistsException.class)
-    public ResponseEntity<ErrorResponse> handlePlayerAlreadyExists(com.agentgierka.mmo.player.exception.PlayerAlreadyExistsException ex) {
+    @ExceptionHandler(PlayerAlreadyExistsException.class)
+    public ResponseEntity<ErrorResponse> handlePlayerAlreadyExists(PlayerAlreadyExistsException ex) {
         log.warn("Player already exists: {}", ex.getMessage());
         return buildResponse(ex.getErrorCode(), ex.getMessage(), HttpStatus.CONFLICT);
     }
@@ -61,10 +65,22 @@ public class GlobalExceptionHandler {
         return buildResponse(ex.getErrorCode(), ex.getMessage(), HttpStatus.NOT_FOUND);
     }
 
+    @ExceptionHandler(InventoryNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleInventoryNotFound(InventoryNotFoundException ex) {
+        log.warn("Inventory not found: {}", ex.getMessage());
+        return buildResponse(ex.getErrorCode(), ex.getMessage(), HttpStatus.NOT_FOUND);
+    }
+
     @ExceptionHandler(AgentStateException.class)
     public ResponseEntity<ErrorResponse> handleAgentStateConflict(AgentStateException ex) {
         log.warn("Agent state conflict: {}", ex.getMessage());
         return buildResponse(ex.getErrorCode(), ex.getMessage(), HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(InventoryException.class)
+    public ResponseEntity<ErrorResponse> handleInventoryException(InventoryException ex) {
+        log.warn("Inventory rule violation: {}", ex.getMessage());
+        return buildResponse(ex.getErrorCode(), ex.getMessage(), HttpStatus.BAD_REQUEST);
     }
 
     @ExceptionHandler(GameBaseException.class)
@@ -73,8 +89,8 @@ public class GlobalExceptionHandler {
         return buildResponse(ex.getErrorCode(), ex.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
-    @ExceptionHandler(org.springframework.security.access.AccessDeniedException.class)
-    public ResponseEntity<ErrorResponse> handleAccessDenied(org.springframework.security.access.AccessDeniedException ex) {
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ErrorResponse> handleAccessDenied(AccessDeniedException ex) {
         log.warn("Access denied: {}", ex.getMessage());
         return buildResponse("FORBIDDEN", "Access denied.", HttpStatus.FORBIDDEN);
     }
