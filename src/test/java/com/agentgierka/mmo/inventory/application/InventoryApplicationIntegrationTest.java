@@ -19,8 +19,14 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
-@SpringBootTest
-@Import(InventoryApplicationIntegrationTest.RetryTestConfig.class)
+import org.springframework.data.redis.connection.RedisConnectionFactory;
+
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.test.context.ContextConfiguration;
+import org.springframework.test.context.junit.jupiter.SpringExtension;
+
+@ExtendWith(SpringExtension.class)
+@ContextConfiguration(classes = InventoryApplicationIntegrationTest.RetryTestConfig.class)
 class InventoryApplicationIntegrationTest {
 
     @Autowired
@@ -41,6 +47,7 @@ class InventoryApplicationIntegrationTest {
         public InventoryApplicationService inventoryApplicationService(InventoryTransactionService transactionService) {
             return new InventoryApplicationService(transactionService);
         }
+
     }
 
     @Test
@@ -55,14 +62,14 @@ class InventoryApplicationIntegrationTest {
                 if (callCount.incrementAndGet() < 3) {
                     throw new OptimisticLockingFailureException("Conflict");
                 }
-                return new InventoryResult.Success(0, 1);
+                return new InventoryOperationResult(new InventoryResult.Success(0, 1), null);
             });
 
         // When
-        InventoryResult result = applicationService.moveItem(characterId, 0, 1);
+        InventoryOperationResult opResult = applicationService.moveItem(characterId, 0, 1);
 
         // Then
-        assertThat(result).isInstanceOf(InventoryResult.Success.class);
+        assertThat(opResult.result()).isInstanceOf(InventoryResult.Success.class);
         assertThat(callCount.get()).isEqualTo(3);
         verify(transactionService, times(3)).moveItem(any(), anyInt(), anyInt());
     }

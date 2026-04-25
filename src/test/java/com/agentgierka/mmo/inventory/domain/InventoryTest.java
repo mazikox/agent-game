@@ -53,7 +53,13 @@ class InventoryTest {
         InventoryResult result = inventory.processMove(0, 1);
 
         // then
-        assertThat(result).isInstanceOf(InventoryResult.Success.class);
+        assertThat(result).isInstanceOf(InventoryResult.SwapSuccess.class);
+        InventoryResult.SwapSuccess swap = (InventoryResult.SwapSuccess) result;
+        assertThat(swap.sourceFrom()).isEqualTo(0);
+        assertThat(swap.sourceTo()).isEqualTo(1);
+        assertThat(swap.targetFrom()).isEqualTo(1);
+        assertThat(swap.targetTo()).isEqualTo(0);
+
         assertThat(inventory.getAnchoredItems().get(1)).isSameAs(ringA);
         assertThat(inventory.getAnchoredItems().get(0)).isSameAs(ringB);
     }
@@ -73,7 +79,13 @@ class InventoryTest {
         InventoryResult result = inventory.processMove(0, 13);
 
         // then
-        assertThat(result).isInstanceOf(InventoryResult.Success.class);
+        assertThat(result).isInstanceOf(InventoryResult.SwapSuccess.class);
+        InventoryResult.SwapSuccess swap = (InventoryResult.SwapSuccess) result;
+        assertThat(swap.sourceFrom()).isEqualTo(0);
+        assertThat(swap.sourceTo()).isEqualTo(13);
+        assertThat(swap.targetFrom()).isEqualTo(14);
+        assertThat(swap.targetTo()).isEqualTo(0);
+
         assertThat(inventory.getAnchoredItems().get(13)).isSameAs(armor);
         assertThat(inventory.getAnchoredItems().get(0)).isSameAs(potion);
     }

@@ -23,41 +23,41 @@ public class InventoryTransactionService {
             .orElseThrow(() -> new InventoryNotFoundException(characterId));
     }
 
-    public InventoryResult moveItem(UUID characterId, int fromIndex, int toIndex) {
+    public InventoryOperationResult moveItem(UUID characterId, int fromIndex, int toIndex) {
         Inventory inventory = getInventory(characterId);
 
         InventoryResult result = inventory.processMove(fromIndex, toIndex);
 
-        if (result instanceof InventoryResult.Success) {
+        if (result instanceof InventoryResult.Success || result instanceof InventoryResult.SwapSuccess) {
             inventoryRepository.save(inventory, characterId);
         }
 
-        return result;
+        return new InventoryOperationResult(result, inventory);
     }
 
-    public InventoryResult addItem(UUID characterId, ItemStack item) {
+    public InventoryOperationResult addItem(UUID characterId, ItemStack item) {
         Inventory inventory = getInventory(characterId);
 
         InventoryResult result = inventory.addItem(item);
 
-        if (result instanceof InventoryResult.Success) {
+        if (result instanceof InventoryResult.Success || result instanceof InventoryResult.SwapSuccess) {
             inventoryRepository.save(inventory, characterId);
         }
 
-        return result;
+        return new InventoryOperationResult(result, inventory);
     }
 
-    public InventoryResult removeItem(UUID characterId, int index, UUID expectedItemId) {
+    public InventoryOperationResult removeItem(UUID characterId, int index, UUID expectedItemId) {
         Inventory inventory = getInventory(characterId);
 
         ItemStack itemAtSlot = inventory.getAnchoredItems().get(index);
         if (itemAtSlot == null || !itemAtSlot.getId().equals(expectedItemId)) {
-            return new InventoryResult.EmptySlot(index);
+            return new InventoryOperationResult(new InventoryResult.EmptySlot(index), inventory);
         }
 
         inventory.removeItem(index);
         inventoryRepository.save(inventory, characterId);
 
-        return new InventoryResult.Success(index, -1);
+        return new InventoryOperationResult(new InventoryResult.Success(index, -1), inventory);
     }
 }

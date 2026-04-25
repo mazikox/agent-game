@@ -4,12 +4,15 @@ import java.util.Set;
 
 public sealed interface InventoryResult permits
     InventoryResult.Success,
+    InventoryResult.SwapSuccess,
     InventoryResult.Collision,
     InventoryResult.OutOfBounds,
     InventoryResult.EmptySlot,
     InventoryResult.NoSpace {
 
     record Success(int fromIndex, int toIndex) implements InventoryResult {}
+
+    record SwapSuccess(int sourceFrom, int sourceTo, int targetFrom, int targetTo) implements InventoryResult {}
 
     record Collision(int attemptedIndex, Set<Integer> collidingSlots) implements InventoryResult {}
 

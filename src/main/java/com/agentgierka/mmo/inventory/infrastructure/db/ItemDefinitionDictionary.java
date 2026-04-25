@@ -14,24 +14,31 @@ public class ItemDefinitionDictionary {
 
     private final ItemDefinitionRepository repo;
     private final ItemDefinitionMapper mapper;
-    private Map<String, ItemDefinition> cache;
+    private volatile Map<String, ItemDefinition> cache = Map.of();
 
     @PostConstruct
     public void load() {
-        this.cache = repo.findAll().stream()
+        Map<String, ItemDefinition> newCache = repo.findAll().stream()
             .map(mapper::toDomain)
             .collect(Collectors.toUnmodifiableMap(ItemDefinition::id, d -> d));
+        this.cache = newCache;
     }
 
     public ItemDefinition getById(String id) {
         ItemDefinition def = cache.get(id);
         if (def == null) {
-            throw new RuntimeException("Item definition not found: " + id);
+            throw new ItemDefinitionNotFoundException(id);
         }
         return def;
     }
 
     public void reload() {
         load();
+    }
+
+    public static class ItemDefinitionNotFoundException extends RuntimeException {
+        public ItemDefinitionNotFoundException(String id) {
+            super("Item definition not found: " + id);
+        }
     }
 }

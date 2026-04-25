@@ -10,7 +10,7 @@ public class Inventory {
     private final int height;
     @Getter
     private final Map<Integer, ItemStack> anchoredItems = new HashMap<>();
-    private final Set<Integer> occupiedSlots = new HashSet<>();
+
 
     public Inventory(int width, int height) {
         this.width = width;
@@ -71,8 +71,7 @@ public class Inventory {
         Set<Integer> collidingAnchors = findCollidingAnchors(newSlots, fromIndex);
 
         if (collidingAnchors.isEmpty()) {
-            Set<Integer> oldSlots = calculateOccupied(fromIndex, item);
-            performAtomicMove(fromIndex, toIndex, item, oldSlots, newSlots);
+            performAtomicMove(fromIndex, toIndex, item);
             return new InventoryResult.Success(fromIndex, toIndex);
         }
 
@@ -101,9 +100,7 @@ public class Inventory {
         source.setQuantity(source.getQuantity() - toTransfer);
 
         if (source.getQuantity() <= 0) {
-            Set<Integer> oldSlots = calculateOccupied(fromIndex, source);
             anchoredItems.remove(fromIndex);
-            occupiedSlots.removeAll(oldSlots);
         }
 
         return new InventoryResult.Success(fromIndex, toIndex);
@@ -114,32 +111,22 @@ public class Inventory {
             return new InventoryResult.Collision(toIndex, Set.of(otherAnchor));
         }
 
-        Set<Integer> sourceNewSlots = calculateOccupied(toIndex, source);
         Set<Integer> otherNewSlots = calculateOccupied(fromIndex, otherItem);
 
-        Set<Integer> sourceOldSlots = calculateOccupied(fromIndex, source);
-        Set<Integer> otherOldSlots = calculateOccupied(otherAnchor, otherItem);
-        
         anchoredItems.remove(fromIndex);
         anchoredItems.remove(otherAnchor);
-        occupiedSlots.removeAll(sourceOldSlots);
-        occupiedSlots.removeAll(otherOldSlots);
 
         Set<Integer> potentialCollisions = findCollidingAnchors(otherNewSlots, -1);
         if (!potentialCollisions.isEmpty()) {
             anchoredItems.put(fromIndex, source);
             anchoredItems.put(otherAnchor, otherItem);
-            occupiedSlots.addAll(sourceOldSlots);
-            occupiedSlots.addAll(otherOldSlots);
             return new InventoryResult.Collision(fromIndex, potentialCollisions);
         }
 
         anchoredItems.put(toIndex, source);
         anchoredItems.put(fromIndex, otherItem);
-        occupiedSlots.addAll(sourceNewSlots);
-        occupiedSlots.addAll(otherNewSlots);
 
-        return new InventoryResult.Success(fromIndex, toIndex);
+        return new InventoryResult.SwapSuccess(fromIndex, toIndex, otherAnchor, fromIndex);
     }
 
     private boolean fitsAt(int index, ItemStack item) {
@@ -179,25 +166,16 @@ public class Inventory {
         return occupied;
     }
 
-    private void performAtomicMove(int from, int to, ItemStack item, Set<Integer> oldIndices, Set<Integer> newIndices) {
-        occupiedSlots.removeAll(oldIndices);
+    private void performAtomicMove(int from, int to, ItemStack item) {
         anchoredItems.remove(from);
         anchoredItems.put(to, item);
-        occupiedSlots.addAll(newIndices);
     }
 
     public void placeItem(int index, ItemStack item) {
         anchoredItems.put(index, item);
-        occupiedSlots.addAll(calculateOccupied(index, item));
     }
 
     public Optional<ItemStack> removeItem(int index) {
-        ItemStack item = anchoredItems.remove(index);
-        if (item != null) {
-            Set<Integer> slots = calculateOccupied(index, item);
-            occupiedSlots.removeAll(slots);
-            return Optional.of(item);
-        }
-        return Optional.empty();
+        return Optional.ofNullable(anchoredItems.remove(index));
     }
 }

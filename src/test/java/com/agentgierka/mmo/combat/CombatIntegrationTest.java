@@ -22,6 +22,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import com.agentgierka.mmo.agent.service.WorldStateSynchronizer;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -59,6 +60,9 @@ class CombatIntegrationTest {
 
     @MockitoBean
     private CreatureInstanceRepository creatureInstanceRepository;
+
+    @MockitoBean
+    private WorldStateSynchronizer worldStateSynchronizer;
 
     private UUID agentId;
     private final UUID creatureId = UUID.randomUUID();

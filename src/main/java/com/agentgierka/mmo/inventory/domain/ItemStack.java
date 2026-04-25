@@ -66,6 +66,10 @@ public class ItemStack {
         this.quantity = Math.min(quantity, definition.maxStack());
     }
 
+    public ItemStack copy() {
+        return new ItemStack(this.id, this.definition, this.quantity);
+    }
+
     private void validateQuantity(int quantity, int maxStack) {
         if (quantity <= 0 || quantity > maxStack) {
             throw new IllegalArgumentException("Invalid quantity for item: " + quantity);

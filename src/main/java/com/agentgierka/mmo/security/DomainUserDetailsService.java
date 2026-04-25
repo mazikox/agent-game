@@ -22,10 +22,11 @@ public class DomainUserDetailsService implements UserDetailsService {
         Player player = playerRepository.findByUsername(username)
                 .orElseThrow(() -> new UsernameNotFoundException("Player not found with username: " + username));
 
-        return User.builder()
-                .username(player.getUsername())
-                .password(player.getPassword())
-                .authorities(Collections.emptyList())
-                .build();
+        return new PlayerPrincipal(
+                player.getUsername(),
+                player.getPassword(),
+                Collections.emptyList(),
+                player.getId()
+        );
     }
 }
