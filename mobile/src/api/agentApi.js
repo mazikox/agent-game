@@ -66,4 +66,12 @@ export const agentApi = {
     const response = await apiClient.get(`/locations/${locationId}/creatures`);
     return response.data;
   },
+
+  /**
+   * Fetches the inventory for a specific character/agent.
+   */
+  getInventory: async (characterId) => {
+    const response = await apiClient.get(`/characters/${characterId}/inventory`);
+    return response.data;
+  },
 };

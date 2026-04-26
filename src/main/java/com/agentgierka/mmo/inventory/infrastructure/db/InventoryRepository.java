@@ -28,7 +28,6 @@ public class InventoryRepository {
                 .orElseGet(() -> createNewEntity(inventory, characterId));
 
         InventoryMapper.toEntity(inventory, entity);
-        entityManager.merge(entity);
     }
 
     private InventoryEntity createNewEntity(Inventory inventory, UUID characterId) {

@@ -55,92 +55,23 @@ const MAP_CONFIG = {
 export const MapView = ({ agentX, agentY, mapWidth, mapHeight, portals = [], creatures = [], locationName = "", agentName = "Shadow-01" }) => {
   const config = MAP_CONFIG[locationName] || MAP_CONFIG['default'];
   const [currentMap, setCurrentMap] = useState(config.uri);
-  const [currentRatio, setCurrentRatio] = useState(config.ratio);
-  const [currentImgW, setCurrentImgW] = useState(1024); // Startowa naturalna wartość przed odpaleniem onLoad
+  const [currentImgW, setCurrentImgW] = useState(1024);
   const [currentImgH, setCurrentImgH] = useState(1024);
-  const [containerLayout, setContainerLayout] = useState({ width: 0, height: 0 });
   const fadeAnim = useRef(new Animated.Value(1)).current;
-  const [viewportLayout, setViewportLayout] = useState({ width: 0, height: 0 });
   
-  // Jednolity rozmiar ramki - niezależnie od załadowanej mapy, utrzymujemy stały układ i wielkość
-  const canvasSize = useMemo(() => {
-    const { width: cw, height: ch } = containerLayout;
-    if (cw === 0 || ch === 0) return { width: '100%', height: '100%' };
-
-    const HEADER_OFFSET = 44; // 38px header + 6px total vertical padding
-    const WIDTH_OFFSET = 3;   // 3px left padding (right is 0)
-
-    // Wymuszamy stałe ratio okienka dla wszystkich map (1.0 = kwadrat, idealnie pod stałe wycięcie 800x800)
-    // Dzięki temu rozmiar ramki w grze NIGDY się nie zmieni przy zmianie mapy.
-    const FIXED_RATIO = 1.0; 
-    
-    let targetWidth = cw;
-    let targetHeight = ((cw - WIDTH_OFFSET) / FIXED_RATIO) + HEADER_OFFSET;
-
-    if (targetHeight > ch) {
-      targetHeight = ch;
-      targetWidth = ((ch - HEADER_OFFSET) * FIXED_RATIO) + WIDTH_OFFSET;
-    }
-
-    return { width: targetWidth, height: targetHeight };
-  }, [containerLayout]);
-
-  // Przesunięcie gracza w układzie procentowym (0-100%) względem wielkości mapy logicznej
   const agentPosPerc = useRef(new Animated.ValueXY({ 
       x: (agentX / Math.max(mapWidth, 1)) * 100, 
       y: (agentY / Math.max(mapHeight, 1)) * 100 
   })).current;
 
-  // Wymiary oryginalnego zdjęcia pobrane statycznie z MAP_CONFIG (omija brak Image.resolveAssetSource na platforrmie Web)
+  const cameraPos = useRef(new Animated.ValueXY({
+    x: 0,
+    y: 0,
+  })).current;
+
+  const VIEWPORT = 800;
   const imgW = currentImgW;
   const imgH = currentImgH;
-
-  // Kamera: wewnątrz viewportu (ramki) wyświetlamy obszar zawsze równy 800 fizycznym pikselom oryginalnego zdjęcia.
-  const CAMERA_PIXELS = 800;
-  const scale = viewportLayout.width > 0 ? (viewportLayout.width / CAMERA_PIXELS) : 1;
-
-  // Wymiary wirtualnej mapy zachowują proporcje zdjęcia ale ich skala jest narzucona przez ramkę
-  const worldWidth = imgW * scale;
-  const worldHeight = imgH * scale;
-
-  // Bezpieczne wyliczanie parametrów dla kamery (clampowanie do krawędzi)
-  const getCameraXParams = () => {
-    if (viewportLayout.width <= 0 || worldWidth <= 0) return { inputRange: [0, 100], outputRange: [0, 0] };
-    if (worldWidth <= viewportLayout.width) {
-      const centeredX = (viewportLayout.width - worldWidth) / 2;
-      return { inputRange: [0, 100], outputRange: [centeredX, centeredX] };
-    }
-    const leftPerc = (viewportLayout.width / 2 / worldWidth) * 100;
-    const rightPerc = 100 - leftPerc;
-    if (leftPerc >= rightPerc) return { inputRange: [0, 100], outputRange: [viewportLayout.width / 2, viewportLayout.width / 2 - worldWidth] };
-    
-    return {
-      inputRange: [0, leftPerc, rightPerc, 100],
-      outputRange: [0, 0, viewportLayout.width - worldWidth, viewportLayout.width - worldWidth]
-    };
-  };
-
-  const getCameraYParams = () => {
-    if (viewportLayout.height <= 0 || worldHeight <= 0) return { inputRange: [0, 100], outputRange: [0, 0] };
-    if (worldHeight <= viewportLayout.height) {
-      const centeredY = (viewportLayout.height - worldHeight) / 2;
-      return { inputRange: [0, 100], outputRange: [centeredY, centeredY] };
-    }
-    const topPerc = (viewportLayout.height / 2 / worldHeight) * 100;
-    const bottomPerc = 100 - topPerc;
-    if (topPerc >= bottomPerc) return { inputRange: [0, 100], outputRange: [viewportLayout.height / 2, viewportLayout.height / 2 - worldHeight] };
-    
-    return {
-      inputRange: [0, topPerc, bottomPerc, 100],
-      outputRange: [0, 0, viewportLayout.height - worldHeight, viewportLayout.height - worldHeight]
-    };
-  };
-
-  const paramsX = getCameraXParams();
-  const paramsY = getCameraYParams();
-
-  const cameraX = agentPosPerc.x.interpolate(paramsX);
-  const cameraY = agentPosPerc.y.interpolate(paramsY);
 
   useEffect(() => {
     const nextConfig = MAP_CONFIG[locationName] || MAP_CONFIG['default'];
@@ -148,74 +79,81 @@ export const MapView = ({ agentX, agentY, mapWidth, mapHeight, portals = [], cre
 
     Animated.timing(fadeAnim, { toValue: 0, duration: 250, useNativeDriver: true }).start(() => {
       setCurrentMap(nextConfig.uri);
-      setCurrentRatio(nextConfig.ratio);
       Animated.timing(fadeAnim, { toValue: 1, duration: 500, useNativeDriver: true }).start();
     });
   }, [locationName, currentMap, fadeAnim]);
 
   useEffect(() => {
-    Animated.timing(agentPosPerc, {
-      toValue: { 
-          x: (agentX / Math.max(mapWidth, 1)) * 100, 
-          y: (agentY / Math.max(mapHeight, 1)) * 100 
-      },
-      duration: 1000, 
-      useNativeDriver: false,
-    }).start();
-  }, [agentX, agentY, mapWidth, mapHeight, agentPosPerc]);
+    if (currentMap) {
+      const uri = typeof currentMap === 'string' 
+        ? currentMap 
+        : currentMap.uri || currentMap;
+      
+      Image.getSize(
+        uri,
+        (w, h) => { 
+          setCurrentImgW(w); 
+          setCurrentImgH(h); 
+        },
+        (error) => console.error('Image.getSize error:', error)
+      );
+    }
+  }, [currentMap]);
 
-  const onViewportLayout = (event) => {
-    const { width, height } = event.nativeEvent.layout;
-    setContainerLayout({ width, height });
-  };
+  useEffect(() => {
+    const safeMapW = Math.max(mapWidth, 1);
+    const safeMapH = Math.max(mapHeight, 1);
+
+    const agentPixelX = (agentX / safeMapW) * currentImgW;
+    const agentPixelY = (agentY / safeMapH) * currentImgH;
+
+    const offsetX = VIEWPORT / 2 - agentPixelX;
+    const offsetY = VIEWPORT / 2 - agentPixelY;
+
+    const targetX = Math.min(0, Math.max(VIEWPORT - currentImgW, offsetX));
+    const targetY = Math.min(0, Math.max(VIEWPORT - currentImgH, offsetY));
+
+    Animated.parallel([
+      Animated.timing(agentPosPerc, {
+        toValue: {
+          x: (agentX / safeMapW) * 100,
+          y: (agentY / safeMapH) * 100,
+        },
+        duration: 1000,
+        useNativeDriver: false,
+      }),
+      Animated.timing(cameraPos, {
+        toValue: { x: targetX, y: targetY },
+        duration: 1000,
+        useNativeDriver: false,
+      }),
+    ]).start();
+  }, [agentX, agentY, mapWidth, mapHeight, currentImgW, currentImgH]);
 
   return (
     <View style={styles.container}>
-
       <Animated.View 
         style={[styles.mapViewport, { opacity: fadeAnim }]}
-        onLayout={onViewportLayout}
       >
         <MapWindowFrame 
           title={locationName} 
-          style={[styles.mapWindow, canvasSize]}
+          style={styles.mapWindow}
         >
           <View 
-              style={[styles.canvas, { width: '100%', height: '100%' }]}
-              onLayout={(e) => setViewportLayout(e.nativeEvent.layout)}
+              style={styles.canvas}
           >
-              {/* Rzeczywista powiększona mapa z efektem zoom-in na wycięty fragment */}
-              <Animated.View style={[
-                  {
-                      position: 'absolute',
-                      left: 0, top: 0,
-                      width: worldWidth > 0 ? worldWidth : '100%', 
-                      height: worldHeight > 0 ? worldHeight : '100%',
-                      transform: [
-                          { translateX: cameraX },
-                          { translateY: cameraY }
-                      ]
-                  }
-              ]}>
-                  <ImageBackground 
-                      source={currentMap}
-                      style={styles.imageLayer}
-                      resizeMode="stretch" 
-                      onLoad={(e) => {
-                          // Na Webie React Native pakuje event z HTML, więc precyzyjnie szukamy naturalWidth DOM'u
-                          const ev = e.nativeEvent || {};
-                          const target = ev.target || {};
-                          const source = ev.source || {};
-
-                          const w = source.width || ev.width || target.naturalWidth || target.clientWidth;
-                          const h = source.height || ev.height || target.naturalHeight || target.clientHeight;
-                          
-                          if (w && h && !isNaN(w) && !isNaN(h) && w > 0) {
-                              setCurrentImgW(Number(w));
-                              setCurrentImgH(Number(h));
-                          }
-                      }}
-                  >
+              <Animated.View style={{
+                position: 'absolute',
+                left: cameraPos.x,
+                top: cameraPos.y,
+                width: imgW,
+                height: imgH,
+              }}>
+                <ImageBackground
+                  source={currentMap}
+                  style={{ width: '100%', height: '100%' }}
+                  resizeMode="stretch"
+                >
                       <View style={styles.worldOverlay}>
                           {portals.map((portal, index) => (
                               <View 
@@ -273,13 +211,11 @@ export const MapView = ({ agentX, agentY, mapWidth, mapHeight, portals = [], cre
                               </View>
                           </Animated.View>
                       </View>
-                  </ImageBackground>
-              </Animated.View>
+              </ImageBackground>
+            </Animated.View>
           </View>
         </MapWindowFrame>
       </Animated.View>
-
-      {/* <View style={styles.vignette} pointerEvents="none" /> */}
     </View>
   );
 };
@@ -291,31 +227,23 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end', // Glued to sidebar
     position: 'relative',
   },
-  ambientBackground: {
-    ...StyleSheet.absoluteFillObject,
-    width: '100%',
-    height: '100%',
-  },
   mapViewport: {
-    width: '100%',
-    height: '100%',
+    width: 803,
+    height: 844,
     justifyContent: 'center',
-    alignItems: 'flex-end', // Glued to sidebar
+    alignItems: 'center',
     position: 'relative',
   },
   mapWindow: {
-    width: '100%',
-    height: '100%',
+    width: 803,
+    height: 844,
     borderRadius: 8,
   },
   canvas: {
-    overflow: 'hidden', 
+    width: 800,
+    height: 800,
+    overflow: 'hidden',
     position: 'relative',
-  },
-  imageLayer: {
-    flex: 1,
-    width: '100%',
-    height: '100%',
   },
   worldOverlay: {
     ...StyleSheet.absoluteFillObject,

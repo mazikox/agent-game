@@ -10,5 +10,6 @@ public record ItemStackResponse(
     int height,
     int gridIndex,
     int quantity,
-    boolean stackable
+    boolean stackable,
+    String iconUrl
 ) {}

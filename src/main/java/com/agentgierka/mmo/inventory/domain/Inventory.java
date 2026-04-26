@@ -12,6 +12,13 @@ public class Inventory {
     private final Map<Integer, ItemStack> anchoredItems = new HashMap<>();
 
 
+    public static final int DEFAULT_WIDTH = 10;
+    public static final int DEFAULT_HEIGHT = 4;
+
+    public static Inventory createDefault() {
+        return new Inventory(DEFAULT_WIDTH, DEFAULT_HEIGHT);
+    }
+
     public Inventory(int width, int height) {
         this.width = width;
         this.height = height;

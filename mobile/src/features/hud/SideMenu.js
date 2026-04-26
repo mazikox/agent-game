@@ -8,10 +8,11 @@ import {
 } from 'lucide-react-native';
 import { NAV_ITEMS } from './navConfig';
 
-const NavItem = ({ icon: Icon, label, color, active }) => (
+const NavItem = ({ icon: Icon, label, color, active, onPress }) => (
   <TouchableOpacity 
     style={[styles.item, active && styles.activeItem]} 
     activeOpacity={0.7}
+    onPress={onPress}
   >
     {active && <View style={styles.activeIndicator} />}
     <View style={styles.iconContainer}>
@@ -21,7 +22,7 @@ const NavItem = ({ icon: Icon, label, color, active }) => (
   </TouchableOpacity>
 );
 
-export const SideMenu = () => {
+export const SideMenu = ({ activeTab, onTabChange }) => {
   return (
     <View style={styles.sidebar}>
       {/* TOP ACTION: BACK */}
@@ -35,7 +36,11 @@ export const SideMenu = () => {
       <ScrollView contentContainerStyle={styles.navContainer} showsVerticalScrollIndicator={false}>
         {NAV_ITEMS.map((item) => (
           <React.Fragment key={item.id}>
-             <NavItem {...item} />
+             <NavItem 
+               {...item} 
+               active={activeTab === item.id}
+               onPress={() => onTabChange && onTabChange(item.id)}
+             />
              <View style={styles.divider} />
           </React.Fragment>
         ))}

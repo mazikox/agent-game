@@ -14,6 +14,14 @@ import com.agentgierka.mmo.world.PortalRepository;
 import com.agentgierka.mmo.creature.model.*;
 import com.agentgierka.mmo.creature.repository.*;
 import com.agentgierka.mmo.creature.service.SpawnService;
+import com.agentgierka.mmo.inventory.infrastructure.db.InventoryRepository;
+import com.agentgierka.mmo.inventory.infrastructure.db.ItemDefinitionRepository;
+import com.agentgierka.mmo.inventory.infrastructure.db.ItemDefinitionEntity;
+import com.agentgierka.mmo.inventory.infrastructure.db.ItemDefinitionMapper;
+import com.agentgierka.mmo.inventory.infrastructure.db.ItemDefinitionDictionary;
+import com.agentgierka.mmo.inventory.domain.Inventory;
+import com.agentgierka.mmo.inventory.domain.ItemStack;
+import com.agentgierka.mmo.inventory.domain.ItemDefinition;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
@@ -22,6 +30,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.UUID;
 
 import org.springframework.context.annotation.Profile;
 
@@ -47,6 +56,10 @@ public class DataInitializer implements CommandLineRunner {
     private final SpawnService spawnService;
     private final PasswordEncoder passwordEncoder;
     private final EngineControl engineControl;
+    private final InventoryRepository inventoryRepository;
+    private final ItemDefinitionRepository itemDefinitionRepository;
+    private final ItemDefinitionMapper itemDefinitionMapper;
+    private final ItemDefinitionDictionary itemDefinitionDictionary;
 
     @Override
     @Transactional
@@ -76,6 +89,8 @@ public class DataInitializer implements CommandLineRunner {
     }
 
     private void initializeAllData() {
+        initializeItemDefinitions();
+        itemDefinitionDictionary.reload();
         List<Location> locations = initializeLocations();
         Location forest = locations.get(0);
         Location meadow = locations.get(1);
@@ -142,6 +157,23 @@ public class DataInitializer implements CommandLineRunner {
 
         Agent scout = Agent.create("Shadow-01", master, startingLocation, 50, 50, 2);
         agentRepository.save(scout);
+
+        // Initialize inventory for the agent
+        Inventory inventory = Inventory.createDefault();
+        
+        ItemDefinitionEntity swordEntity = itemDefinitionRepository.findById("sword_01").orElseThrow();
+        ItemDefinitionEntity potionEntity = itemDefinitionRepository.findById("potion_hp").orElseThrow();
+        ItemDefinitionEntity goldEntity = itemDefinitionRepository.findById("gold_coin").orElseThrow();
+        
+        ItemDefinition swordDef = itemDefinitionMapper.toDomain(swordEntity);
+        ItemDefinition potionDef = itemDefinitionMapper.toDomain(potionEntity);
+        ItemDefinition goldDef = itemDefinitionMapper.toDomain(goldEntity);
+        
+        inventory.addItem(new ItemStack(UUID.randomUUID(), swordDef, 1));
+        inventory.addItem(new ItemStack(UUID.randomUUID(), potionDef, 5));
+        inventory.addItem(new ItemStack(UUID.randomUUID(), goldDef, 10));
+
+        inventoryRepository.save(inventory, scout.getId());
     }
 
     private void initializeMonsters(Location forest, Location mine) {
@@ -167,5 +199,36 @@ public class DataInitializer implements CommandLineRunner {
         forestLoot.addEntry(LootEntry.create(forestLoot, "Herb", 0.1, 1, 3, 0));
         forestLoot.addEntry(LootEntry.create(forestLoot, "Gold Coin", 0.5, 5, 20, 0));
         lootTableRepository.save(forestLoot);
+    }
+
+    private void initializeItemDefinitions() {
+        if (itemDefinitionRepository.count() > 0) return;
+
+        itemDefinitionRepository.saveAll(List.of(
+            ItemDefinitionEntity.builder()
+                .id("sword_01").name("Iron Sword")
+                .width(1).height(3).maxStack(1)
+                .iconUrl("/items/sword_01.png").build(),
+            ItemDefinitionEntity.builder()
+                .id("potion_hp").name("Health Potion")
+                .width(1).height(1).maxStack(20)
+                .iconUrl("/items/potion_hp.png").build(),
+            ItemDefinitionEntity.builder()
+                .id("wolf_pelt").name("Wolf Pelt")
+                .width(1).height(1).maxStack(20)
+                .iconUrl("/items/wolf_pelt.png").build(),
+            ItemDefinitionEntity.builder()
+                .id("wolf_fang").name("Wolf Fang")
+                .width(1).height(1).maxStack(10)
+                .iconUrl("/items/wolf_fang.png").build(),
+            ItemDefinitionEntity.builder()
+                .id("herb").name("Herb")
+                .width(1).height(1).maxStack(50)
+                .iconUrl("/items/herb.png").build(),
+            ItemDefinitionEntity.builder()
+                .id("gold_coin").name("Gold Coin")
+                .width(1).height(1).maxStack(999)
+                .iconUrl("/items/gold_coin.png").build()
+        ));
     }
 }

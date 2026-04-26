@@ -5,7 +5,8 @@ public record ItemDefinition(
     String name,
     int width,
     int height,
-    int maxStack
+    int maxStack,
+    String iconUrl
 ) {
     public ItemDefinition {
         validateDimensions(width, height);

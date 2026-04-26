@@ -31,6 +31,4 @@ public class ItemStackEntity {
     @Column(name = "quantity", nullable = false)
     private int quantity;
 
-    @Version
-    private Long version;
 }

@@ -9,6 +9,7 @@ import { SideMenu } from './src/features/hud/SideMenu';
 import { HUDElement } from './src/features/hud/HUDElement';
 import { LoginScreen } from './src/features/auth/LoginScreen';
 import { SocketProvider } from './src/api/SocketContext';
+import { InventoryPanel } from './src/features/hud/InventoryPanel';
 
 // FANTASY FONTS
 import { useFonts, Cinzel_700Bold } from '@expo-google-fonts/cinzel';
@@ -33,6 +34,8 @@ function GameContent() {
     performCombatAction 
   } = useAgentState();
 
+  const [activeTab, setActiveTab] = useState('map');
+
   const { width } = useWindowDimensions();
   const isCompact = width < 768; // Tablet threshold
   const currentHudConfig = isCompact ? hudConfig.COMPACT : hudConfig.DEFAULT;
@@ -46,32 +49,53 @@ function GameContent() {
     );
   }
 
+  const renderMainContent = () => {
+    switch (activeTab) {
+      case 'map':
+        return (
+          <MapView 
+            agentX={agent?.x || 0}
+            agentY={agent?.y || 0}
+            mapWidth={location ? location.width : 100}
+            mapHeight={location ? location.height : 100}
+            portals={location ? location.portals : []}
+            creatures={creatures || []}
+            locationName={location ? location.name : 'Unknown Realm'}
+            agentName={agent?.name || 'Shadow-01'}
+          />
+        );
+      case 'inventory':
+        return <InventoryPanel agentId={agent?.id} />;
+      default:
+        return (
+          <View style={[styles.container, styles.center, { padding: 20 }]}>
+            <Text style={{ color: theme.colors.accent, fontSize: 20, fontFamily: theme.typography.fantasy }}>
+              {activeTab.toUpperCase()}
+            </Text>
+            <Text style={{ color: '#cbd5e0', marginTop: 10, textAlign: 'center' }}>
+              Ta sekcja krainy jest jeszcze niezbadana...
+            </Text>
+          </View>
+        );
+    }
+  };
+
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.fantasy.stone }]}>
       <StatusBar hidden />
       
       {/* MAIN INTEGRATED LAYOUT */}
       <View style={styles.mainRow}>
-          
           {/* CENTER: MAP AREA */}
           <View style={styles.mapArea}>
-            <MapView 
-              agentX={agent?.x || 0}
-              agentY={agent?.y || 0}
-              mapWidth={location ? location.width : 100}
-              mapHeight={location ? location.height : 100}
-              portals={location ? location.portals : []}
-              creatures={creatures || []}
-              locationName={location ? location.name : 'Unknown Realm'}
-              agentName={agent?.name || 'Shadow-01'}
-            />
+            {renderMainContent()}
           </View>
+      </View>
 
-          {/* RIGHT: SIDEBAR */}
-          <View style={styles.sidebarArea}>
-            <SideMenu />
-          </View>
-        </View>
+      {/* RIGHT: SIDEBAR (Absolute positioned to prevent overlapping by overlay) */}
+      <View style={styles.sidebarArea}>
+        <SideMenu activeTab={activeTab} onTabChange={setActiveTab} />
+      </View>
 
         {/* HUD OVERLAY (ABSOLUTE ELEMENTS) */}
         <View style={[styles.hudOverlay, { pointerEvents: 'box-none' }]}>
@@ -168,10 +192,15 @@ const styles = StyleSheet.create({
   mapArea: {
     flex: 1,
     padding: 15,
+    marginRight: 85, // Reserve space for absolute sidebar
   },
   sidebarArea: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    bottom: 0,
     width: 85,
-    height: '100%',
+    zIndex: 200,
   },
   loadingContainer: {
     flex: 1,

@@ -32,5 +32,6 @@ public interface InventoryWebMapper {
     @Mapping(target = "stackable", source = "item.definition.stackable")
     @Mapping(target = "gridIndex", source = "gridIndex")
     @Mapping(target = "quantity", source = "item.quantity")
+    @Mapping(target = "iconUrl", source = "item.definition.iconUrl")
     ItemStackResponse toItemResponse(ItemStack item, Integer gridIndex);
 }

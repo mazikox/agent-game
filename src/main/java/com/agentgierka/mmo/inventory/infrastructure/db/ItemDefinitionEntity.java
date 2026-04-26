@@ -29,4 +29,7 @@ public class ItemDefinitionEntity {
 
     @Column(name = "max_stack", nullable = false)
     private int maxStack;
+
+    @Column(name = "icon_url")
+    private String iconUrl;
 }

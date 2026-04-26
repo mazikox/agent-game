@@ -19,8 +19,8 @@ class InventoryTest {
     void setUp() {
         // 5 columns x 9 rows
         inventory = new Inventory(5, 9);
-        swordDef = new ItemDefinition("SWORD", "Sword", 1, 3, 1);
-        potionDef = new ItemDefinition("POTION", "Potion", 1, 1, 20);
+        swordDef = new ItemDefinition("SWORD", "Sword", 1, 3, 1, null);
+        potionDef = new ItemDefinition("POTION", "Potion", 1, 1, 20, null);
     }
 
     @Test
@@ -43,7 +43,7 @@ class InventoryTest {
     @DisplayName("Should swap two 1x1 items positions")
     void shouldSwapTwoSmallItems() {
         // given
-        ItemDefinition ringDef = new ItemDefinition("RING", "Ring", 1, 1, 1);
+        ItemDefinition ringDef = new ItemDefinition("RING", "Ring", 1, 1, 1, null);
         ItemStack ringA = new ItemStack(UUID.randomUUID(), ringDef, 1);
         ItemStack ringB = new ItemStack(UUID.randomUUID(), ringDef, 1);
         inventory.placeItem(0, ringA);
@@ -68,7 +68,7 @@ class InventoryTest {
     @DisplayName("Should swap big item (2x3) with small item (1x1)")
     void shouldSwapBigWithSmall() {
         // given
-        ItemDefinition armorDef = new ItemDefinition("ARMOR", "Armor", 2, 3, 1);
+        ItemDefinition armorDef = new ItemDefinition("ARMOR", "Armor", 2, 3, 1, null);
         ItemStack armor = new ItemStack(UUID.randomUUID(), armorDef, 1);
         ItemStack potion = new ItemStack(UUID.randomUUID(), potionDef, 1);
         
@@ -94,7 +94,7 @@ class InventoryTest {
     @DisplayName("Should fail swap when overlapping with multiple items")
     void shouldFailSwapWithMultipleItems() {
         // given
-        ItemDefinition armorDef = new ItemDefinition("ARMOR", "Armor", 2, 2, 1);
+        ItemDefinition armorDef = new ItemDefinition("ARMOR", "Armor", 2, 2, 1, null);
         ItemStack armor = new ItemStack(UUID.randomUUID(), armorDef, 1);
         ItemStack potion1 = new ItemStack(UUID.randomUUID(), potionDef, 1);
         ItemStack potion2 = new ItemStack(UUID.randomUUID(), potionDef, 1);
@@ -150,7 +150,7 @@ class InventoryTest {
     @DisplayName("Should fail when moving item out of bounds")
     void shouldFailOutOfBounds() {
         // given
-        ItemDefinition bigDef = new ItemDefinition("BIG", "Big", 2, 2, 1);
+        ItemDefinition bigDef = new ItemDefinition("BIG", "Big", 2, 2, 1, null);
         ItemStack bigItem = new ItemStack(UUID.randomUUID(), bigDef, 1);
         inventory.placeItem(0, bigItem);
 
@@ -165,7 +165,7 @@ class InventoryTest {
     @DisplayName("Should find first empty slot for 1x1 item")
     void shouldFindEmptySlot() {
         // given
-        ItemDefinition ringDef = new ItemDefinition("RING", "Ring", 1, 1, 1);
+        ItemDefinition ringDef = new ItemDefinition("RING", "Ring", 1, 1, 1, null);
         ItemStack ring1 = new ItemStack(UUID.randomUUID(), ringDef, 1);
         ItemStack ring2 = new ItemStack(UUID.randomUUID(), ringDef, 1);
         inventory.placeItem(0, ring1);
@@ -182,7 +182,7 @@ class InventoryTest {
     @DisplayName("Should find space for 1x3 sword when first slots are occupied")
     void shouldFindSpaceForBigItem() {
         // given
-        ItemDefinition ringDef = new ItemDefinition("RING", "Ring", 1, 1, 1);
+        ItemDefinition ringDef = new ItemDefinition("RING", "Ring", 1, 1, 1, null);
         inventory.placeItem(0, new ItemStack(UUID.randomUUID(), ringDef, 1));
         inventory.placeItem(1, new ItemStack(UUID.randomUUID(), ringDef, 1));
         
@@ -218,7 +218,7 @@ class InventoryTest {
     @DisplayName("Should fail to add item when no space is available")
     void shouldFailWhenFull() {
         // given
-        ItemDefinition ringDef = new ItemDefinition("RING", "Ring", 1, 1, 1);
+        ItemDefinition ringDef = new ItemDefinition("RING", "Ring", 1, 1, 1, null);
         Inventory tinyInventory = new Inventory(1, 1);
         tinyInventory.placeItem(0, new ItemStack(UUID.randomUUID(), ringDef, 1));
         
