@@ -210,4 +210,67 @@ class CombatIntegrationTest {
                 .param("actionType", CombatActionType.ATTACK.toString()))
                 .andExpect(status().isBadRequest()); // Maped from CombatException
     }
+
+    @Test
+    @DisplayName("Should return 403 Forbidden when player tries to initiate combat with another player's agent")
+    void shouldReturn403WhenInitiatingCombatForOtherAgent() throws Exception {
+        mockMvc.perform(post("/api/combat/initiate")
+                .with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user("OtherPlayer"))
+                .param("agentId", agentId.toString())
+                .param("creatureId", creatureId.toString()))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("Should return 500 Internal Server Error when both agent and creature have zero speed")
+    void shouldFailWhenBothSpeedsAreZero() throws Exception {
+        // Initial setup to make agent very slow (0)
+        transactionTemplate.executeWithoutResult(s -> {
+            Agent agent = agentRepository.findById(agentId).orElseThrow();
+            agent.getStats().setAttackSpeed(0);
+            agentRepository.save(agent);
+        });
+
+        // Mock creature with 0 speed bypassing builder validation
+        CreatureInstance slowCreature = org.mockito.Mockito.mock(CreatureInstance.class);
+        when(slowCreature.getInstanceId()).thenReturn(creatureId);
+        when(slowCreature.getName()).thenReturn("ZeroSpeedSlime");
+        when(slowCreature.getCurrentHp()).thenReturn(20);
+        when(slowCreature.getMaxHp()).thenReturn(20);
+        when(slowCreature.getAttackSpeed()).thenReturn(0);
+        when(slowCreature.getDamage()).thenReturn(2);
+        when(slowCreature.getState()).thenReturn(CreatureState.ALIVE);
+        
+        when(creatureInstanceRepository.findById(creatureId)).thenReturn(slowCreature);
+
+        // Try initiate - should fail on syncTime with IllegalArgumentException (HTTP 500 mapped by GlobalExceptionHandler)
+        mockMvc.perform(post("/api/combat/initiate")
+                .with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user("CombatPlayer"))
+                .param("agentId", agentId.toString())
+                .param("creatureId", creatureId.toString()))
+                .andExpect(status().isInternalServerError());
+    }
+
+    @Test
+    @DisplayName("Should return 400 Bad Request when another agent attempts to attack the same creature")
+    void shouldFailWhenCreatureAlreadyEngaged() throws Exception {
+        // 1. First agent initiates combat
+        mockMvc.perform(post("/api/combat/initiate")
+                .with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user("CombatPlayer"))
+                .param("agentId", agentId.toString())
+                .param("creatureId", creatureId.toString()))
+                .andExpect(status().isOk());
+
+        // Setup second agent owned by the same player
+        Agent agent2 = transactionTemplate.execute(s -> agentRepository.save(
+                Agent.create("Warrior2", playerRepository.findAll().get(0), locationRepository.findAll().get(0), 0, 0, 1)
+        ));
+
+        // 2. Second agent attempts to initiate combat with the SAME creature
+        mockMvc.perform(post("/api/combat/initiate")
+                .with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user("CombatPlayer"))
+                .param("agentId", agent2.getId().toString())
+                .param("creatureId", creatureId.toString()))
+                .andExpect(status().isBadRequest());
+    }
 }

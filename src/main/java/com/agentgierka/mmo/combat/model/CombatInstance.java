@@ -28,6 +28,9 @@ public class CombatInstance {
     @Column(nullable = false)
     private UUID creatureInstanceId;
 
+    @Version
+    private Long version;
+
     /** Accumulated points for the Agent. Reach 100 to take a turn. */
     @Builder.Default
     @Column(name = "agent_ap")
@@ -67,6 +70,9 @@ public class CombatInstance {
     public void applyTick(int agentSpeed, int creatureSpeed) {
         if (this.status != CombatStatus.ONGOING) {
             return;
+        }
+        if (agentSpeed <= 0 && creatureSpeed <= 0) {
+            throw new IllegalArgumentException("Both combatants cannot have zero or negative speed");
         }
         this.agentAp += agentSpeed;
         this.creatureAp += creatureSpeed;
@@ -109,6 +115,14 @@ public class CombatInstance {
      */
     public void finishCombat() {
         this.status = CombatStatus.FINISHED;
+        this.endedAt = LocalDateTime.now();
+    }
+
+    /**
+     * Abandons the combat and marks the end time.
+     */
+    public void abandon() {
+        this.status = CombatStatus.ABANDONED;
         this.endedAt = LocalDateTime.now();
     }
 }

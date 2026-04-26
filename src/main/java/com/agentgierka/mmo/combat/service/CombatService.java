@@ -21,6 +21,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.dao.OptimisticLockingFailureException;
+import org.springframework.resilience.annotation.Retryable;
 
 import java.util.UUID;
 
@@ -61,6 +63,11 @@ public class CombatService {
             throw new CombatException("Creature is not available for combat (State: " + creature.getState() + ")");
         }
 
+        combatRepository.findByCreatureInstanceIdAndStatus(creatureId, CombatStatus.ONGOING)
+                .ifPresent(existing -> {
+                    throw new CombatException("Creature is already engaged in combat");
+                });
+
         // Logic: Distance check could be added here in the future
         
         // Lock both entities
@@ -88,6 +95,11 @@ public class CombatService {
     /**
      * Executes an action in an ongoing combat.
      */
+    @Retryable(
+        includes = OptimisticLockingFailureException.class,
+        maxRetries = 3,
+        delay = 100
+    )
     @Transactional
     public void executeAction(UUID agentId, CombatActionType actionType) {
         CombatInstance combat = combatRepository.findByAgentIdAndStatus(agentId, CombatStatus.ONGOING)
@@ -168,11 +180,20 @@ public class CombatService {
         }
     }
 
+    private static final int MAX_TICKS = 10_000;
+
     private void syncTime(CombatInstance combat, Agent agent, CreatureInstance creature) {
         if (combat.getStatus() != CombatStatus.ONGOING) return;
         
+        int ticks = 0;
         // Loop ticks until at least one combatant hits 100 AP
         while (!combat.canAgentAct() && !combat.canCreatureAct()) {
+            if (++ticks > MAX_TICKS) {
+                log.error("syncTime exceeded max ticks — agentSpeed={}, creatureSpeed={}",
+                    agent.getStats().getAttackSpeed(), creature.getAttackSpeed());
+                combat.abandon();
+                throw new CombatException("Combat stalled — possible zero-speed configuration");
+            }
             combat.applyTick(agent.getStats().getAttackSpeed(), creature.getAttackSpeed());
         }
     }
