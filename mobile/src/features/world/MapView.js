@@ -103,16 +103,44 @@ export const MapView = ({ agentX, agentY, mapWidth, mapHeight, portals = [], cre
   const worldWidth = imgW * scale;
   const worldHeight = imgH * scale;
 
-  // Kamera centrująca podąża za procentem wyliczonej, sztucznie powiększonej wirtualnej planszy
-  const cameraX = agentPosPerc.x.interpolate({
-      inputRange: [0, 100],
-      outputRange: [viewportLayout.width / 2, viewportLayout.width / 2 - worldWidth]
-  });
+  // Bezpieczne wyliczanie parametrów dla kamery (clampowanie do krawędzi)
+  const getCameraXParams = () => {
+    if (viewportLayout.width <= 0 || worldWidth <= 0) return { inputRange: [0, 100], outputRange: [0, 0] };
+    if (worldWidth <= viewportLayout.width) {
+      const centeredX = (viewportLayout.width - worldWidth) / 2;
+      return { inputRange: [0, 100], outputRange: [centeredX, centeredX] };
+    }
+    const leftPerc = (viewportLayout.width / 2 / worldWidth) * 100;
+    const rightPerc = 100 - leftPerc;
+    if (leftPerc >= rightPerc) return { inputRange: [0, 100], outputRange: [viewportLayout.width / 2, viewportLayout.width / 2 - worldWidth] };
+    
+    return {
+      inputRange: [0, leftPerc, rightPerc, 100],
+      outputRange: [0, 0, viewportLayout.width - worldWidth, viewportLayout.width - worldWidth]
+    };
+  };
 
-  const cameraY = agentPosPerc.y.interpolate({
-      inputRange: [0, 100],
-      outputRange: [viewportLayout.height / 2, viewportLayout.height / 2 - worldHeight]
-  });
+  const getCameraYParams = () => {
+    if (viewportLayout.height <= 0 || worldHeight <= 0) return { inputRange: [0, 100], outputRange: [0, 0] };
+    if (worldHeight <= viewportLayout.height) {
+      const centeredY = (viewportLayout.height - worldHeight) / 2;
+      return { inputRange: [0, 100], outputRange: [centeredY, centeredY] };
+    }
+    const topPerc = (viewportLayout.height / 2 / worldHeight) * 100;
+    const bottomPerc = 100 - topPerc;
+    if (topPerc >= bottomPerc) return { inputRange: [0, 100], outputRange: [viewportLayout.height / 2, viewportLayout.height / 2 - worldHeight] };
+    
+    return {
+      inputRange: [0, topPerc, bottomPerc, 100],
+      outputRange: [0, 0, viewportLayout.height - worldHeight, viewportLayout.height - worldHeight]
+    };
+  };
+
+  const paramsX = getCameraXParams();
+  const paramsY = getCameraYParams();
+
+  const cameraX = agentPosPerc.x.interpolate(paramsX);
+  const cameraY = agentPosPerc.y.interpolate(paramsY);
 
   useEffect(() => {
     const nextConfig = MAP_CONFIG[locationName] || MAP_CONFIG['default'];

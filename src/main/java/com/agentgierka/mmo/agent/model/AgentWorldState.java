@@ -31,6 +31,10 @@ public class AgentWorldState implements Serializable {
     private AgentStatus status;
     private Integer hp;
     private Integer maxHp;
+    private UUID targetId;
+    private String targetName;
+    private Integer targetHp;
+    private Integer targetMaxHp;
     
     @Builder.Default
     private Integer speed = 1;
@@ -55,6 +59,7 @@ public class AgentWorldState implements Serializable {
                 .hp(agent.getStats().getHp())
                 .maxHp(agent.getStats().getMaxHp())
                 .speed(agent.getSpeed())
+                .targetId(agent.getTargetId())
                 .version(0)
                 .build();
     }

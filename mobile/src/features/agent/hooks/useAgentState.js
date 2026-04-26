@@ -79,6 +79,10 @@ export function useAgentState() {
           currentLocationId: nextLocId,
           maxHp: updatedState.maxHp || prev?.maxHp || 100,
           hp: updatedState.hp !== undefined ? updatedState.hp : prev?.hp,
+          targetId: updatedState.targetId,
+          targetName: updatedState.targetName,
+          targetHp: updatedState.targetHp,
+          targetMaxHp: updatedState.targetMaxHp,
           currentActionDescription: updatedState.currentActionDescription
         };
       });

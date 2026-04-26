@@ -86,6 +86,11 @@ function GameContent() {
                 status={agent?.status}
                 x={agent?.x}
                 y={agent?.y}
+                targetId={agent?.targetId}
+                targetName={agent?.targetName}
+                targetHp={agent?.targetHp}
+                targetMaxHp={agent?.targetMaxHp}
+                creatures={creatures}
                 currentTask={agent?.currentTask}
                 currentAction={agent?.currentActionDescription}
                 hudConfig={currentHudConfig}

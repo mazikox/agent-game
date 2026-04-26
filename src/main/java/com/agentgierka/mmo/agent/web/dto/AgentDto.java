@@ -28,5 +28,6 @@ public record AgentDto(
         Integer maxHp,
         Integer experience,
         Integer expThreshold,
-        Integer level) {
+        Integer level,
+        UUID targetId) {
 }

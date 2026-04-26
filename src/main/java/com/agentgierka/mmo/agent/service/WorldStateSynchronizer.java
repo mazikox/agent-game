@@ -7,6 +7,8 @@ import com.agentgierka.mmo.agent.model.AgentWorldState;
 import com.agentgierka.mmo.agent.model.MovementType;
 import com.agentgierka.mmo.agent.repository.AgentWorldStateRepository;
 import com.agentgierka.mmo.world.Location;
+import com.agentgierka.mmo.creature.model.CreatureInstance;
+import com.agentgierka.mmo.creature.repository.CreatureInstanceRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -23,10 +25,21 @@ public class WorldStateSynchronizer {
 
     private final AgentWorldStateRepository agentWorldStateRepository;
     private final ApplicationEventPublisher eventPublisher;
+    private final CreatureInstanceRepository creatureInstanceRepository;
 
     public void syncMovementAfterCommit(Agent agent) {
         executeAfterCommit(() -> {
             AgentWorldState worldState = AgentWorldState.fromAgent(agent);
+            if (agent.getTargetId() != null) {
+                CreatureInstance target = creatureInstanceRepository.findById(agent.getTargetId());
+                if (target != null) {
+                    worldState = worldState.toBuilder()
+                        .targetName(target.getName())
+                        .targetHp(target.getCurrentHp())
+                        .targetMaxHp(target.getMaxHp())
+                        .build();
+                }
+            }
             agentWorldStateRepository.save(worldState);
             eventPublisher.publishEvent(new AgentStateUpdatedEvent(worldState));
         });

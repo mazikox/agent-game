@@ -3,6 +3,7 @@ import { View, Text, Image, StyleSheet, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { theme } from '../../theme/theme';
 import { GothicBlendedImage } from '../../components/ui/GothicBlendedImage';
+import { CombatPanel } from '../combat/CombatPanel';
 
 /**
  * AGENT PROFILE - DATA-DRIVEN SHELL
@@ -20,6 +21,11 @@ export const AgentProfile = ({
   status = "IDLE", 
   x = 0, 
   y = 0,
+  targetId,
+  targetName,
+  targetHp,
+  targetMaxHp,
+  creatures = [],
   currentAction,
   hudConfig,
   onAttackNearest,
@@ -44,6 +50,18 @@ export const AgentProfile = ({
   // Calculate percentages for fills
   const hpPercent = Math.min(100, Math.max(0, (hp / maxHp) * 100));
   const staminaPercent = Math.min(100, Math.max(0, (stamina / maxStamina) * 100));
+
+  // Find active creature in combat (WoW-style TargetId with fallback)
+  const activeCreature = status === 'IN_COMBAT' && creatures.length > 0
+    ? (targetId ? creatures.find(c => c.instanceId === targetId) : null) ||
+      creatures
+        .filter(c => c.state === 'IN_COMBAT')
+        .map(c => ({
+          ...c,
+          distance: Math.sqrt(Math.pow(c.x - x, 2) + Math.pow(c.y - y, 2))
+        }))
+        .sort((a, b) => a.distance - b.distance)[0]
+    : null;
 
   return (
     <View style={styles.rootContainer}>
@@ -110,8 +128,8 @@ export const AgentProfile = ({
         <Text style={styles.actionText}>{currentAction}</Text>
       )}
 
-      {/* DEBUG COMBAT PANEL */}
-      <View style={styles.debugCombatPanel}>
+      {/* COMBAT PANEL */}
+      <View style={styles.combatPanelContainer}>
         {status !== 'IN_COMBAT' ? (
           <TouchableOpacity 
             style={styles.actionButton} 
@@ -120,26 +138,15 @@ export const AgentProfile = ({
             <Text style={styles.actionButtonText}>ATTACK NEAREST</Text>
           </TouchableOpacity>
         ) : (
-          <View style={styles.combatActionsRow}>
-            <TouchableOpacity 
-              style={[styles.actionButton, { backgroundColor: theme.colors.fantasy.blood }]} 
-              onPress={() => onCombatAction('ATTACK')}
-            >
-              <Text style={styles.actionButtonText}>ATTACK</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.actionButton, { backgroundColor: theme.colors.primary }]} 
-              onPress={() => onCombatAction('POTION')}
-            >
-              <Text style={styles.actionButtonText}>POTION</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.actionButton, { backgroundColor: theme.colors.secondary }]} 
-              onPress={() => onCombatAction('FLEE')}
-            >
-              <Text style={styles.actionButtonText}>FLEE</Text>
-            </TouchableOpacity>
-          </View>
+          <CombatPanel 
+            agentName={name}
+            agentHp={hp}
+            agentMaxHp={maxHp}
+            enemyName={targetName || activeCreature?.name || "Enemy"}
+            enemyHp={targetHp !== undefined ? targetHp : (activeCreature?.currentHp !== undefined ? activeCreature.currentHp : 100)}
+            enemyMaxHp={targetMaxHp || activeCreature?.maxHp || 100}
+            onCombatAction={onCombatAction}
+          />
         )}
       </View>
     </View>
@@ -219,14 +226,10 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     marginTop: -5,
   },
-  debugCombatPanel: {
-    marginTop: 10,
+  combatPanelContainer: {
+    marginTop: 15,
     width: '100%',
     alignItems: 'center',
-  },
-  combatActionsRow: {
-    flexDirection: 'row',
-    gap: 10,
   },
   actionButton: {
     backgroundColor: 'rgba(26, 54, 93, 0.8)',

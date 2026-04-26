@@ -64,6 +64,9 @@ public class Agent {
 
     private LocalDateTime lastTeleportAt;
 
+    @Column(name = "target_id")
+    private UUID targetId;
+
     /**
      * Official factory method for creating new agents with guaranteed valid state.
      */
@@ -222,5 +225,13 @@ public class Agent {
         if (this.stats.getLevel() > oldStats.getLevel()) {
             this.currentActionDescription = "LEVEL UP! Reached level " + this.stats.getLevel();
         }
+    }
+
+    public void targetEntity(UUID entityId) {
+        this.targetId = entityId;
+    }
+
+    public void clearTarget() {
+        this.targetId = null;
     }
 }

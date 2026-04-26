@@ -72,6 +72,7 @@ public class CombatService {
         
         // Lock both entities
         agent.updateStatus(AgentStatus.IN_COMBAT, "Engaged in combat with " + creature.getName());
+        agent.targetEntity(creatureId);
         agentRepository.save(agent);
         worldStateSynchronizer.syncMovementAfterCommit(agent);
 
@@ -160,6 +161,7 @@ public class CombatService {
                 if (!combat.canAgentAct()) throw new CombatException("Must wait for turn to flee");
                 combat.finishCombat();
                 agent.updateStatus(AgentStatus.IDLE, "Fled from combat");
+                agent.clearTarget();
                 creature.exitCombat();
                 String msg = "Combat: " + agent.getName() + " fled from " + creature.getName();
                 log.info(msg);
@@ -201,6 +203,7 @@ public class CombatService {
     private void handleVictory(CombatInstance combat, Agent agent, CreatureInstance creature) {
         combat.finishCombat();
         agent.updateStatus(AgentStatus.IDLE, "Victory over " + creature.getName());
+        agent.clearTarget();
         agent.gainExperience(creature.getExperienceReward());
         
         // Trigger death ceremony (WebSocket events, loot)
@@ -214,6 +217,7 @@ public class CombatService {
     private void handleDefeat(CombatInstance combat, Agent agent, CreatureInstance creature) {
         combat.finishCombat();
         agent.updateStatus(AgentStatus.RESTING, "Sustained heavy injuries from " + creature.getName());
+        agent.clearTarget();
         creature.exitCombat(); // Creature stays since it won
         String msg = "Combat Defeat: " + agent.getName() + " was defeated by " + creature.getName();
         log.info(msg);
