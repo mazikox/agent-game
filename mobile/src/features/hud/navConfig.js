@@ -1,11 +1,12 @@
-import { 
-  Briefcase, 
-  Zap, 
-  Map as MapIcon, 
-  ShoppingBag, 
-  Sword, 
+import {
+  Briefcase,
+  Zap,
+  Map as MapIcon,
+  ShoppingBag,
+  Sword,
   BookOpen,
-  Settings
+  Settings,
+  Shield
 } from 'lucide-react-native';
 import { theme } from '../../theme/theme';
 
@@ -17,4 +18,5 @@ export const NAV_ITEMS = [
   { id: 'shop', label: 'Shop', icon: ShoppingBag, color: theme.colors.text.secondary },
   { id: 'quests', label: 'Quests', icon: BookOpen, color: theme.colors.text.secondary },
   { id: 'settings', label: 'Settings', icon: Settings, color: theme.colors.text.secondary },
+  { id: 'admin', label: 'Admin', icon: Shield, color: theme.colors.text.secondary },
 ];

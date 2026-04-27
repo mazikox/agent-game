@@ -178,9 +178,9 @@ public class DataInitializer implements CommandLineRunner {
 
     private void initializeMonsters(Location forest, Location mine) {
         // Templates
-        CreatureTemplate wolf = CreatureTemplate.create("Forest Wolf", CreatureRank.NORMAL, 1, 50, 8, 25, 5);
-        CreatureTemplate spider = CreatureTemplate.create("Giant Spider", CreatureRank.ELITE, 3, 150, 15, 75, 8);
-        CreatureTemplate dragon = CreatureTemplate.create("Shadowfang Dragon", CreatureRank.BOSS, 10, 2000, 50, 500, 15);
+        CreatureTemplate wolf = CreatureTemplate.create("Forest Wolf", CreatureRank.NORMAL, 1, 50, 8, 25, 5, "/creatures/wolf.png");
+        CreatureTemplate spider = CreatureTemplate.create("Giant Spider", CreatureRank.ELITE, 3, 150, 15, 75, 8, "/creatures/spider.png");
+        CreatureTemplate dragon = CreatureTemplate.create("Shadowfang Dragon", CreatureRank.BOSS, 10, 2000, 50, 500, 15, "/creatures/dragon.png");
         creatureTemplateRepository.saveAll(List.of(wolf, spider, dragon));
 
         // Spawn Points

@@ -34,6 +34,8 @@ public class CreatureTemplate {
 
     private int aggroRadius;
 
+    private String iconUrl;
+
     @OneToMany(mappedBy = "creatureTemplate", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<LootTable> lootTables;
 
@@ -46,6 +48,19 @@ public class CreatureTemplate {
                 .baseDamage(baseDamage)
                 .experienceReward(expReward)
                 .aggroRadius(aggroRadius)
+                .build();
+    }
+
+    public static CreatureTemplate create(String name, CreatureRank rank, int level, int baseHp, int baseDamage, int expReward, int aggroRadius, String iconUrl) {
+        return CreatureTemplate.builder()
+                .name(name)
+                .rank(rank)
+                .level(level)
+                .baseHp(baseHp)
+                .baseDamage(baseDamage)
+                .experienceReward(expReward)
+                .aggroRadius(aggroRadius)
+                .iconUrl(iconUrl)
                 .build();
     }
 

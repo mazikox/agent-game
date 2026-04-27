@@ -10,6 +10,7 @@ import { HUDElement } from './src/features/hud/HUDElement';
 import { LoginScreen } from './src/features/auth/LoginScreen';
 import { SocketProvider } from './src/api/SocketContext';
 import { InventoryPanel } from './src/features/hud/InventoryPanel';
+import { AdminPanel } from './src/features/admin/AdminPanel';
 
 // FANTASY FONTS
 import { useFonts, Cinzel_700Bold } from '@expo-google-fonts/cinzel';
@@ -66,6 +67,8 @@ function GameContent() {
         );
       case 'inventory':
         return <InventoryPanel agentId={agent?.id} />;
+      case 'admin':
+        return <AdminPanel agent={agent} location={location} creatures={creatures} />;
       default:
         return (
           <View style={[styles.container, styles.center, { padding: 20 }]}>
@@ -98,8 +101,8 @@ function GameContent() {
       </View>
 
         {/* HUD OVERLAY (ABSOLUTE ELEMENTS) */}
-        <View style={[styles.hudOverlay, { pointerEvents: 'box-none' }]}>
-          <SafeAreaView style={{ flex: 1, pointerEvents: 'box-none' }}>
+        <View style={styles.hudOverlay} pointerEvents="box-none">
+          <SafeAreaView style={{ flex: 1 }} pointerEvents="box-none">
             
             <HUDElement id="AGENT_PROFILE">
               <AgentProfile 

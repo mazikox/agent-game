@@ -4,6 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { theme } from '../../theme/theme';
 import { agentApi } from '../../api/agentApi';
 import { getItemImageUrl, ITEM_PLACEHOLDER } from '../../utils/itemUtils';
+import { MapWindowFrame } from '../world/MapWindowFrame';
 
 export const InventoryPanel = ({ agentId }) => {
   const [inventory, setInventory] = useState(null);
@@ -49,11 +50,12 @@ export const InventoryPanel = ({ agentId }) => {
   const slotSize = 60; // Size of one grid slot
 
   return (
-    <LinearGradient
-      colors={['rgba(20, 20, 25, 0.95)', 'rgba(10, 10, 15, 0.98)']}
-      style={styles.container}
-    >
-      <Text style={styles.title}>INVENTORY</Text>
+    <View style={styles.outerContainer}>
+      <MapWindowFrame title="INVENTORY" style={styles.mapWindow}>
+        <LinearGradient
+          colors={['rgba(20, 20, 25, 0.95)', 'rgba(10, 10, 15, 0.98)']}
+          style={styles.gradientContent}
+        >
       
       <ScrollView horizontal contentContainerStyle={styles.scrollContent}>
         <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -118,21 +120,29 @@ export const InventoryPanel = ({ agentId }) => {
           </View>
         </ScrollView>
       </ScrollView>
-    </LinearGradient>
+      </LinearGradient>
+      </MapWindowFrame>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  outerContainer: {
     flex: 1,
-    padding: 15,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(246, 173, 85, 0.3)',
+    justifyContent: 'center',
+    alignItems: 'flex-end', 
+    paddingRight: 20,
+  },
+  mapWindow: {
+    width: 803,
+    height: 844,
+    borderRadius: 8,
+  },
+  gradientContent: {
+    ...StyleSheet.absoluteFillObject,
+    padding: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    minWidth: 300,
-    minHeight: 300,
   },
   center: {
     flex: 1,

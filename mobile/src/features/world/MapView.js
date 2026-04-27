@@ -1,5 +1,5 @@
-import React, { useEffect, useRef, useState, useMemo } from 'react';
-import { View, StyleSheet, Text, ImageBackground, Animated, Image } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { View, StyleSheet, Text, ImageBackground, Animated, Image, Platform } from 'react-native';
 import { theme } from '../../theme/theme';
 import { MapPin, Atom } from 'lucide-react-native';
 import { MapWindowFrame } from './MapWindowFrame';
@@ -52,22 +52,43 @@ const MAP_CONFIG = {
   },
 };
 
-export const MapView = ({ agentX, agentY, mapWidth, mapHeight, portals = [], creatures = [], locationName = "", agentName = "Shadow-01" }) => {
+const MONSTER_ICONS = {
+  '/creatures/wolf.png': require('../../../assets/monster_avatar.png'),
+  '/creatures/spider.png': require('../../../assets/monster_avatar.png'),
+  '/creatures/dragon.png': require('../../../assets/monster_avatar.png'),
+};
+
+const getMonsterIcon = (iconUrl) => {
+  return MONSTER_ICONS[iconUrl] || require('../../../assets/monster_avatar.png');
+};
+
+export const MapView = ({ agentX, agentY, mapWidth, mapHeight, portals = [], creatures = [], locationName = "", agentName = "Shadow-01", onPress }) => {
   const config = MAP_CONFIG[locationName] || MAP_CONFIG['default'];
+
   const [currentMap, setCurrentMap] = useState(config.uri);
   const [currentImgW, setCurrentImgW] = useState(1024);
   const [currentImgH, setCurrentImgH] = useState(1024);
   const fadeAnim = useRef(new Animated.Value(1)).current;
-  
-  const agentPosPerc = useRef(new Animated.ValueXY({ 
-      x: (agentX / Math.max(mapWidth, 1)) * 100, 
-      y: (agentY / Math.max(mapHeight, 1)) * 100 
+
+  const agentPosPerc = useRef(new Animated.ValueXY({
+    x: (agentX / Math.max(mapWidth, 1)) * 100,
+    y: (agentY / Math.max(mapHeight, 1)) * 100,
   })).current;
 
-  const cameraPos = useRef(new Animated.ValueXY({
-    x: 0,
-    y: 0,
-  })).current;
+  const cameraPos = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
+
+  // Plain-number mirror of cameraPos for click math
+  const cameraPosRef = useRef({ x: 0, y: 0 });
+  useEffect(() => {
+    const idX = cameraPos.x.addListener(({ value }) => { cameraPosRef.current.x = value; });
+    const idY = cameraPos.y.addListener(({ value }) => { cameraPosRef.current.y = value; });
+    return () => {
+      cameraPos.x.removeListener(idX);
+      cameraPos.y.removeListener(idY);
+    };
+  }, [cameraPos]);
+
+
 
   const VIEWPORT = 800;
   const imgW = currentImgW;
@@ -76,28 +97,20 @@ export const MapView = ({ agentX, agentY, mapWidth, mapHeight, portals = [], cre
   useEffect(() => {
     const nextConfig = MAP_CONFIG[locationName] || MAP_CONFIG['default'];
     if (nextConfig.uri === currentMap) return;
-
     Animated.timing(fadeAnim, { toValue: 0, duration: 250, useNativeDriver: true }).start(() => {
       setCurrentMap(nextConfig.uri);
       Animated.timing(fadeAnim, { toValue: 1, duration: 500, useNativeDriver: true }).start();
     });
-  }, [locationName, currentMap, fadeAnim]);
+  }, [locationName]);
 
   useEffect(() => {
-    if (currentMap) {
-      const uri = typeof currentMap === 'string' 
-        ? currentMap 
-        : currentMap.uri || currentMap;
-      
-      Image.getSize(
-        uri,
-        (w, h) => { 
-          setCurrentImgW(w); 
-          setCurrentImgH(h); 
-        },
-        (error) => console.error('Image.getSize error:', error)
-      );
-    }
+    if (!currentMap) return;
+    const uri = typeof currentMap === 'string' ? currentMap : currentMap.uri || currentMap;
+    Image.getSize(
+      uri,
+      (w, h) => { setCurrentImgW(w); setCurrentImgH(h); },
+      (err) => console.error('Image.getSize error:', err)
+    );
   }, [currentMap]);
 
   useEffect(() => {
@@ -115,10 +128,7 @@ export const MapView = ({ agentX, agentY, mapWidth, mapHeight, portals = [], cre
 
     Animated.parallel([
       Animated.timing(agentPosPerc, {
-        toValue: {
-          x: (agentX / safeMapW) * 100,
-          y: (agentY / safeMapH) * 100,
-        },
+        toValue: { x: (agentX / safeMapW) * 100, y: (agentY / safeMapH) * 100 },
         duration: 1000,
         useNativeDriver: false,
       }),
@@ -132,85 +142,108 @@ export const MapView = ({ agentX, agentY, mapWidth, mapHeight, portals = [], cre
 
   return (
     <View style={styles.container}>
-      <Animated.View 
-        style={[styles.mapViewport, { opacity: fadeAnim }]}
-      >
-        <MapWindowFrame 
-          title={locationName} 
-          style={styles.mapWindow}
-        >
-          <View 
-              style={styles.canvas}
+      <Animated.View style={[styles.mapViewport, { opacity: fadeAnim }]}>
+        <MapWindowFrame title={locationName} style={styles.mapWindow}>
+          {/* canvasRef lets us attach a native DOM listener on Web */}
+          <View
+            style={[
+              styles.canvas,
+              onPress && Platform.OS === 'web' && { cursor: 'crosshair' },
+            ]}
+            onClick={onPress && Platform.OS === 'web' ? (e) => {
+              const rect = e.currentTarget.getBoundingClientRect();
+              const canvasX = e.clientX - rect.left;
+              const canvasY = e.clientY - rect.top;
+
+              // Subtract camera offset to get pixel position inside the map image
+              const mapPixelX = canvasX - cameraPosRef.current.x;
+              const mapPixelY = canvasY - cameraPosRef.current.y;
+
+              const imgW = Math.max(currentImgW, 1);
+              const imgH = Math.max(currentImgH, 1);
+              const mW = Math.max(mapWidth, 1);
+              const mH = Math.max(mapHeight, 1);
+
+              const gameX = Math.round((mapPixelX / imgW) * mW);
+              const gameY = Math.round((mapPixelY / imgH) * mH);
+
+              console.log('[AdminMap] canvas click → canvasXY:', canvasX, canvasY,
+                '| cameraOffset:', cameraPosRef.current.x, cameraPosRef.current.y,
+                '| mapPixel:', mapPixelX, mapPixelY,
+                '| gameCoords:', gameX, gameY);
+
+              onPress(gameX, gameY);
+            } : undefined}
           >
-              <Animated.View style={{
-                position: 'absolute',
-                left: cameraPos.x,
-                top: cameraPos.y,
-                width: imgW,
-                height: imgH,
-              }}>
-                <ImageBackground
-                  source={currentMap}
-                  style={{ width: '100%', height: '100%' }}
-                  resizeMode="stretch"
-                >
-                      <View style={styles.worldOverlay}>
-                          {portals.map((portal, index) => (
-                              <View 
-                                  key={`portal-${index}`} 
-                                  style={[
-                                      styles.portalContainer, 
-                                      { 
-                                          left: `${(portal.sourceX / Math.max(mapWidth, 1)) * 100}%`, 
-                                          top: `${(portal.sourceY / Math.max(mapHeight, 1)) * 100}%` 
-                                      }
-                                  ]}
-                              >
-                                  <PulseIcon>
-                                      <View style={styles.portalIconWrapper}>
-                                          <Atom size={20} color={theme.colors.primary} strokeWidth={2.5} />
-                                      </View>
-                                  </PulseIcon>
-                                  <Text style={styles.portalLabel}>{portal.targetLocationName}</Text>
-                              </View>
-                          ))}
+            <Animated.View style={{
+              position: 'absolute',
+              left: cameraPos.x,
+              top: cameraPos.y,
+              width: imgW,
+              height: imgH,
+            }}>
+              <ImageBackground
+                source={currentMap}
+                style={{ width: '100%', height: '100%' }}
+                resizeMode="stretch"
+              >
+                <View style={styles.worldOverlay}>
+                  {portals.map((portal, index) => (
+                    <View
+                      key={`portal-${index}`}
+                      style={[
+                        styles.portalContainer,
+                        {
+                          left: `${(portal.sourceX / Math.max(mapWidth, 1)) * 100}%`,
+                          top: `${(portal.sourceY / Math.max(mapHeight, 1)) * 100}%`,
+                        },
+                      ]}
+                    >
+                      <PulseIcon>
+                        <View style={styles.portalIconWrapper}>
+                          <Atom size={20} color={theme.colors.primary} strokeWidth={2.5} />
+                        </View>
+                      </PulseIcon>
+                      <Text style={styles.portalLabel}>{portal.targetLocationName}</Text>
+                    </View>
+                  ))}
 
-                          {creatures.map((creature) => (
-                              <View
-                                  key={creature.instanceId}
-                                  style={[
-                                      styles.creatureMarker,
-                                      {
-                                          left: `${(Number(creature.x) / Math.max(mapWidth, 1)) * 100}%`,
-                                          top: `${(Number(creature.y) / Math.max(mapHeight, 1)) * 100}%`
-                                      }
-                                  ]}
-                              />
-                          ))}
+                  {creatures.map((creature) => (
+                    <View
+                      key={creature.instanceId}
+                      style={[
+                        styles.creatureMarker,
+                        {
+                          left: `${(Number(creature.x) / Math.max(mapWidth, 1)) * 100}%`,
+                          top: `${(Number(creature.y) / Math.max(mapHeight, 1)) * 100}%`,
+                        },
+                      ]}
+                    >
+                      <Image 
+                        source={getMonsterIcon(creature.iconUrl)} 
+                        style={styles.creatureIcon}
+                        resizeMode="cover"
+                      />
+                    </View>
+                  ))}
 
-                          <Animated.View style={[
-                              styles.agentMarker,
-                              {
-                                  left: agentPosPerc.x.interpolate({
-                                      inputRange: [0, 100],
-                                      outputRange: ['0%', '100%']
-                                  }),
-                                  top: agentPosPerc.y.interpolate({
-                                      inputRange: [0, 100],
-                                      outputRange: ['0%', '100%']
-                                  })
-                              }
-                          ]}>
-                              <View style={styles.pulseRing} />
-                              <View style={styles.agentTag}>
-                                  <Text style={styles.agentTagText}>{agentName}</Text>
-                                  <Text style={styles.agentCoords}>({agentX}, {agentY})</Text>
-                              </View>
-                              <View style={styles.pinWrapper}>
-                                  <MapPin size={28} color={theme.colors.accent} strokeWidth={3} fill={theme.colors.accent + '20'} />
-                              </View>
-                          </Animated.View>
-                      </View>
+                  <Animated.View style={[
+                    styles.agentMarker,
+                    {
+                      left: agentPosPerc.x.interpolate({ inputRange: [0, 100], outputRange: ['0%', '100%'] }),
+                      top: agentPosPerc.y.interpolate({ inputRange: [0, 100], outputRange: ['0%', '100%'] }),
+                    },
+                  ]}>
+                    <View style={styles.pulseRing} />
+                    <View style={styles.agentTag}>
+                      <Text style={styles.agentTagText}>{agentName}</Text>
+                      <Text style={styles.agentCoords}>({agentX}, {agentY})</Text>
+                    </View>
+                    <View style={styles.pinWrapper}>
+                      <MapPin size={28} color={theme.colors.accent} strokeWidth={3} fill={theme.colors.accent + '20'} />
+                    </View>
+                  </Animated.View>
+                </View>
               </ImageBackground>
             </Animated.View>
           </View>
@@ -224,7 +257,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: 'center',
-    alignItems: 'flex-end', // Glued to sidebar
+    alignItems: 'flex-end',
     position: 'relative',
   },
   mapViewport: {
@@ -281,20 +314,26 @@ const styles = StyleSheet.create({
   },
   creatureMarker: {
     position: 'absolute',
-    width: 24,
-    height: 24,
-    marginLeft: -12,
-    marginTop: -12,
-    borderRadius: 12,
-    backgroundColor: '#dc2626', // Red-600
-    borderColor: '#fca5a5', // Lighter red border
+    width: 40,
+    height: 40,
+    marginLeft: -20,
+    marginTop: -20,
+    borderRadius: 20,
+    backgroundColor: '#dc2626',
+    borderColor: '#fca5a5',
     borderWidth: 2,
+    overflow: 'hidden',
     shadowColor: '#dc2626',
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 1.0,
     shadowRadius: 8,
     zIndex: 90,
     elevation: 5,
+  },
+  creatureIcon: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 12,
   },
   agentMarker: {
     position: 'absolute',
@@ -304,7 +343,7 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     marginLeft: -30,
-    marginTop: -45, 
+    marginTop: -45,
   },
   pinWrapper: {
     shadowColor: theme.colors.accent,
@@ -350,9 +389,4 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginTop: 0,
   },
-  vignette: {
-    ...StyleSheet.absoluteFillObject,
-    borderWidth: 60,
-    borderColor: 'rgba(0,0,0,0.45)',
-  }
 });

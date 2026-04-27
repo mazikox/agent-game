@@ -47,7 +47,8 @@ public class SpawnService {
         }
     }
 
-    void spawnAtPoint(SpawnPoint point) {
+    @Transactional
+    public void spawnAtPoint(SpawnPoint point) {
         CreatureTemplate template = point.getCreatureTemplate();
         
         int posX = point.getCenterX() + getRandomOffset(point.getWanderRadius());
