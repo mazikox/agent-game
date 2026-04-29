@@ -38,8 +38,7 @@ public class AgentService {
 
     @Transactional
     public void assignGoal(UUID agentId, String goal) {
-        Agent agent = agentRepository.findById(agentId)
-                .orElseThrow(() -> new AgentNotFoundException(agentId.toString()));
+        Agent agent = findAndSync(agentId);
 
         // Initialize quota from player's tier/maxThinkingSteps, fallback to 1
         int initialQuota = (agent.getOwner() != null && agent.getOwner().getMaxThinkingSteps() != null) 
@@ -55,8 +54,7 @@ public class AgentService {
 
     @Transactional
     public void interruptAgent(UUID agentId) {
-        Agent agent = agentRepository.findById(agentId)
-                .orElseThrow(() -> new AgentNotFoundException(agentId.toString()));
+        Agent agent = findAndSync(agentId);
 
         agent.cancelCurrentGoal();
         agentRepository.save(agent);
@@ -82,8 +80,7 @@ public class AgentService {
 
     @Transactional
     public Agent moveTo(UUID agentId, Integer targetX, Integer targetY) {
-        Agent agent = agentRepository.findById(agentId)
-                .orElseThrow(() -> new AgentNotFoundException(agentId.toString()));
+        Agent agent = findAndSync(agentId);
 
         if (agent.getStatus() == AgentStatus.IN_COMBAT) {
             throw new AgentStateException("Cannot move manually while in combat. Use FLEE first.");
@@ -110,8 +107,7 @@ public class AgentService {
 
     @Transactional
     public Agent teleportTo(UUID agentId, com.agentgierka.mmo.world.Location location, Integer x, Integer y) {
-        Agent agent = agentRepository.findById(agentId)
-                .orElseThrow(() -> new AgentNotFoundException(agentId.toString()));
+        Agent agent = findAndSync(agentId);
 
         // Cooldown check: prevent teleporting more than once every 5 seconds
         if (agent.getLastTeleportAt() != null && 
@@ -137,5 +133,17 @@ public class AgentService {
         agent.updateStatus(status, description);
 
         return agentRepository.save(agent);
+    }
+
+    private Agent findAndSync(UUID id) {
+        Agent agent = agentRepository.findById(id)
+                .orElseThrow(() -> new AgentNotFoundException(id.toString()));
+
+        AgentWorldState worldState = agentWorldStateRepository.findById(id);
+        if (worldState != null) {
+            agent.syncWithWorldState(worldState);
+        }
+
+        return agent;
     }
 }

@@ -29,23 +29,36 @@ public class GeminiBrainAdapter implements Brain {
     public Thought think(Perception perception) {
         try {
             String systemText = """
-                    You are the autonomous brain of an agent in a persistent MMO idle game.
-                    The world consists of distinct 'Lands' (Locations). Each land is a grid with specific Width and Height.
-                    Your goal is to fulfill your 'Current Goal'.
-
-                    Coordinate System Rules:
-                    - (0, 0) is the Top-Left corner (North-West).
-                    - Y increases towards the South (Bottom). Y=0 is the top edge.
-                    - X increases towards the East (Right). X=0 is the left edge.
-                    - STAY WITHIN THE MAP: Your target coordinates must be between 0 and the map's Width/Height.
-
-                    Navigation Rules:
-                    1. If the 'Current Goal' is a movement command within the current land (e.g., "go to the top", "go to center"), calculate the appropriate (X, Y) and set 'status' to 'MOVING'.
-                    2. PORTALS are 'World Gates'. Use them ONLY if your goal requires traveling to a DIFFERENT land.
-                    3. To use a portal, set 'targetX' and 'targetY' to the portal's coordinates.
-                    4. If you are already at the desired location or have no clear path, set 'status' to 'IDLE'.
-                    5. Provide a brief, role-play style 'actionSummary' explaining your reasoning (e.g., "I'm heading North to reach the border").
+                    You are the intent classification brain of an agent in a persistent MMO idle game.
+                    Your job is to break down the 'Current Goal' into a sequence of logical steps (List of Decisions).
                     
+                    Map Coordinate System:
+                    - (0, 0) is the top-left corner of the map.
+                    - Going DOWN INCREASES Y. Going UP DECREASES Y.
+                    - Going RIGHT INCREASES X. Going LEFT DECREASES X.
+
+                    Available Action Types:
+                    - MOVE_TO_CREATURE: Go to a monster.
+                    - MOVE_TO_PORTAL: Go to a teleport gate.
+                    - MOVE_TO_POSITION: Go to absolute coordinates. Use this WHENEVER explicit coordinates (like '50,30') are provided.
+                    - MOVE_RELATIVE: Step by a relative amount (e.g., offset from current position).
+                    - IDLE: Stand still.
+                    - UNKNOWN: Use when completely unsure.
+
+                    Targeting Rules:
+                    1. Use 'targetIndex' (0-indexed integer) to pick a specific monster or portal from the lists provided in your Perception.
+                    2. If you don't use targetIndex, use 'qualifier':
+                       - NEAREST: Pick the closest one.
+                       - NEAREST_OTHER: Pick the closest one that isn't the current one.
+                       - SPECIFIC: Target a specific named entity.
+                    3. 'rawX' and 'rawY' MUST be filled for MOVE_TO_POSITION (use absolute X,Y) or MOVE_RELATIVE (use relative offset like X=5, Y=-3).
+
+                    Multi-Step Sequences:
+                    - If the goal says "do X and then do Y", return exactly TWO actions in the actions array.
+
+                    Language Rule:
+                    - Write your 'actionSummary' in the same language as the 'Current Goal' (e.g., Polish if user typed Polish).
+
                     Always respond in JSON.
                     """ + "\n" + converter.getFormat();
 
@@ -56,10 +69,13 @@ public class GeminiBrainAdapter implements Brain {
                     Current Coordinates: (%d, %d)
                     Current Land: %s - %s
                     Current Goal: %s
+                    Memory Log (Recent Events):
+                    %s
                     Last Action: %s
                     Visible Portals (World Gates): %s
+                    Visible Creatures (Monsters): %s
                     
-                    Decide your next logical step.
+                    Decide your next logical steps.
                     """.formatted(
                     perception.name(),
                     perception.mapWidth(),
@@ -69,8 +85,11 @@ public class GeminiBrainAdapter implements Brain {
                     perception.locationName(),
                     perception.locationDescription(),
                     perception.currentGoal(),
+                    perception.memoryLog() != null && !perception.memoryLog().isEmpty() ? 
+                            String.join("\n", perception.memoryLog()) : "No previous actions recorded.",
                     perception.lastActionDescription(),
-                    perception.nearbyObjects()
+                    perception.nearbyObjects(),
+                    perception.visibleCreatures()
             );
 
             Prompt prompt = new Prompt(List.of(
@@ -88,38 +107,19 @@ public class GeminiBrainAdapter implements Brain {
                 return createFallbackThought("AI response was empty.");
             }
 
-            Thought thought = converter.convert(content);
-            return validateThought(thought, perception);
+            return converter.convert(content);
 
         } catch (Exception e) {
             return createFallbackThought("AI thinking failed: " + e.getMessage());
         }
     }
 
-    private Thought validateThought(Thought thought, Perception perception) {
-        if (thought == null) return createFallbackThought("Parsing failed.");
-
-        // Hallucination Guard: Validate coordinates against map boundaries
-        if (thought.targetX() != null && thought.targetY() != null) {
-            boolean outOfBounds = thought.targetX() < 0 || thought.targetX() > perception.mapWidth() ||
-                                 thought.targetY() < 0 || thought.targetY() > perception.mapHeight();
-            
-            if (outOfBounds) {
-                return thought.toBuilder()
-                        .status("IDLE")
-                        .actionSummary("AI hallucinated coordinates (" + thought.targetX() + "," + thought.targetY() + ") outside map boundaries. Standing by.")
-                        .targetX(null)
-                        .targetY(null)
-                        .build();
-            }
-        }
-        return thought;
-    }
-
     private Thought createFallbackThought(String reason) {
         return Thought.builder()
-                .actionSummary("AI had trouble thinking (" + reason + "). Standing by.")
-                .status("IDLE")
+                .actions(List.of(com.agentgierka.mmo.ai.model.Decision.builder()
+                        .actionType("IDLE")
+                        .actionSummary("AI had trouble thinking (" + reason + "). Standing by.")
+                        .build()))
                 .build();
     }
 }

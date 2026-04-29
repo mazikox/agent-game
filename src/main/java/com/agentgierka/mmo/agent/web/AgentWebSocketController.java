@@ -3,6 +3,7 @@ package com.agentgierka.mmo.agent.web;
 import com.agentgierka.mmo.agent.event.AgentGoalCompletedEvent;
 import com.agentgierka.mmo.agent.event.AgentArrivedEvent;
 import com.agentgierka.mmo.agent.event.AgentStateUpdatedEvent;
+import com.agentgierka.mmo.agent.event.AgentConsoleLogEvent;
 import com.agentgierka.mmo.agent.model.AgentStatus;
 import com.agentgierka.mmo.agent.model.AgentWorldState;
 import com.agentgierka.mmo.agent.model.MovementType;
@@ -51,6 +52,13 @@ public class AgentWebSocketController {
     public void onCombatLog(com.agentgierka.mmo.combat.event.CombatLogEvent event) {
         String destination = "/topic/agents/" + event.agentId() + "/logs";
         log.debug("Broadcasting combat log to {}: {}", destination, event.message());
+        messagingTemplate.convertAndSend(destination, event.message());
+    }
+
+    @EventListener
+    public void onAgentConsoleLog(AgentConsoleLogEvent event) {
+        String destination = "/topic/agents/" + event.agentId() + "/logs";
+        log.debug("Broadcasting agent console log to {}: {}", destination, event.message());
         messagingTemplate.convertAndSend(destination, event.message());
     }
 

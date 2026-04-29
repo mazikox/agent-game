@@ -7,6 +7,7 @@ import com.agentgierka.mmo.world.Location;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.time.LocalDateTime;
@@ -56,6 +57,16 @@ public class Agent {
 
     private String goal;
 
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "agent_memory_log", joinColumns = @JoinColumn(name = "agent_id"))
+    @Builder.Default
+    private List<String> memoryLog = new ArrayList<>();
+
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "agent_action_queue", joinColumns = @JoinColumn(name = "agent_id"))
+    @Builder.Default
+    private List<ActionStep> actionQueue = new ArrayList<>();
+
     private Integer remainingThinkingSteps;
 
     private String currentTask;
@@ -84,12 +95,41 @@ public class Agent {
     }
 
     public void assignGoal(String newGoal, int quota) {
+        if (this.memoryLog == null) {
+            this.memoryLog = new ArrayList<>();
+        }
+        if (this.actionQueue == null) {
+            this.actionQueue = new ArrayList<>();
+        }
+        this.actionQueue.clear();
+        this.memoryLog.add(0, "[CEL] Gracz: " + newGoal);
+        while (this.memoryLog.size() > 10) {
+            this.memoryLog.remove(this.memoryLog.size() - 1);
+        }
         this.goal = newGoal;
         this.remainingThinkingSteps = quota;
         this.currentTask = "Waiting for goal analysis...";
         this.targetX = null;
         this.targetY = null;
         this.status = AgentStatus.IDLE;
+    }
+
+    public void enqueueActions(List<ActionStep> steps) {
+        if (this.actionQueue == null) {
+            this.actionQueue = new ArrayList<>();
+        }
+        this.actionQueue.addAll(steps);
+    }
+
+    public ActionStep popNextAction() {
+        if (this.actionQueue == null || this.actionQueue.isEmpty()) {
+            return null;
+        }
+        return this.actionQueue.remove(0);
+    }
+
+    public boolean hasActions() {
+        return this.actionQueue != null && !this.actionQueue.isEmpty();
     }
 
     public void cancelCurrentGoal() {
@@ -155,7 +195,7 @@ public class Agent {
         }
     }
 
-    public Perception preparePerception(List<String> nearbyObjects) {
+    public Perception preparePerception(List<String> nearbyObjects, List<String> visibleCreatures) {
         return Perception.builder()
                 .name(this.name)
                 .x(this.x)
@@ -165,36 +205,14 @@ public class Agent {
                 .locationName(currentLocation != null ? currentLocation.getName() : "Unknown")
                 .locationDescription(currentLocation != null ? currentLocation.getDescription() : "")
                 .currentGoal(this.goal)
+                .memoryLog(new ArrayList<>(this.memoryLog))
                 .lastActionDescription(this.currentActionDescription)
                 .nearbyObjects(nearbyObjects)
+                .visibleCreatures(visibleCreatures)
                 .build();
     }
 
-    public void applyThought(Thought thought) {
-        this.currentActionDescription = thought.actionSummary();
-        this.currentTask = thought.nextGoal();
-        this.targetX = thought.targetX();
-        this.targetY = thought.targetY();
-
-        if (thought.status() != null) {
-            try {
-                this.status = AgentStatus.valueOf(thought.status().toUpperCase());
-            } catch (IllegalArgumentException e) {
-                this.status = AgentStatus.IDLE;
-            }
-        }
-
-        // Domain rule: If coordinates were changed by AI, forcefully set MOVING status
-        // to engage Game Engine ticks.
-        if (this.targetX != null && this.targetY != null &&
-                (!this.targetX.equals(this.x) || !this.targetY.equals(this.y))) {
-            this.status = AgentStatus.MOVING;
-        }
-
-        consumeThinkingStep();
-    }
-
-    private void consumeThinkingStep() {
+    public void consumeThinkingStep() {
         if (remainingThinkingSteps != null) {
             remainingThinkingSteps--;
             if (remainingThinkingSteps <= 0 && status == AgentStatus.IDLE) {
@@ -203,6 +221,7 @@ public class Agent {
             }
         }
     }
+
 
     // --- Rich Domain Methods for RPG ---
 

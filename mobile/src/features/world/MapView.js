@@ -53,13 +53,64 @@ const MAP_CONFIG = {
 };
 
 const MONSTER_ICONS = {
-  '/creatures/wolf.png': require('../../../assets/monster_avatar.png'),
-  '/creatures/spider.png': require('../../../assets/monster_avatar.png'),
-  '/creatures/dragon.png': require('../../../assets/monster_avatar.png'),
+  'Forest Wolf': require('../../../assets/mobs/bug.png'),
+  'Giant Spider': require('../../../assets/mobs/bug.png'),
+  'Shadowfang Dragon': require('../../../assets/mobs/bug.png'),
+  'Spruce Tree': require('../../../assets/mobs/choinka.png'),
+  'Spruce Tree (Alt)': require('../../../assets/mobs/choinkaINT.png'),
 };
 
-const getMonsterIcon = (iconUrl) => {
-  return MONSTER_ICONS[iconUrl] || require('../../../assets/monster_avatar.png');
+const getMonsterIcon = (name) => {
+  return MONSTER_ICONS[name] || require('../../../assets/mobs/bug.png');
+};
+
+const CreatureMarker = ({ creature, mapWidth, mapHeight }) => {
+  const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
+  const [measured, setMeasured] = useState(false);
+
+  const iconSource = getMonsterIcon(creature.name);
+
+  return (
+    <View
+      style={{
+        position: 'absolute',
+        left: `${(Number(creature.x) / Math.max(mapWidth, 1)) * 100}%`,
+        top: `${(Number(creature.y) / Math.max(mapHeight, 1)) * 100}%`,
+        marginLeft: -dimensions.width / 2,
+        marginTop: -dimensions.height / 2,
+        opacity: measured ? 1 : 0,
+        zIndex: 90,
+      }}
+    >
+      <Image 
+        source={iconSource} 
+        style={dimensions.width ? { width: dimensions.width, height: dimensions.height } : {}}
+        resizeMode="contain"
+        onLayout={(e) => {
+          const { width, height } = e.nativeEvent.layout;
+          if (width && height && !measured) {
+            let finalW = width;
+            let finalH = height;
+            const MAX_SIZE = 64;
+            
+            if (width > MAX_SIZE || height > MAX_SIZE) {
+              const ratio = width / height;
+              if (ratio > 1) {
+                finalW = MAX_SIZE;
+                finalH = MAX_SIZE / ratio;
+              } else {
+                finalH = MAX_SIZE;
+                finalW = MAX_SIZE * ratio;
+              }
+            }
+            
+            setDimensions({ width: finalW, height: finalH });
+            setMeasured(true);
+          }
+        }}
+      />
+    </View>
+  );
 };
 
 export const MapView = ({ agentX, agentY, mapWidth, mapHeight, portals = [], creatures = [], locationName = "", agentName = "Shadow-01", onPress }) => {
@@ -208,23 +259,13 @@ export const MapView = ({ agentX, agentY, mapWidth, mapHeight, portals = [], cre
                     </View>
                   ))}
 
-                  {creatures.map((creature) => (
-                    <View
-                      key={creature.instanceId}
-                      style={[
-                        styles.creatureMarker,
-                        {
-                          left: `${(Number(creature.x) / Math.max(mapWidth, 1)) * 100}%`,
-                          top: `${(Number(creature.y) / Math.max(mapHeight, 1)) * 100}%`,
-                        },
-                      ]}
-                    >
-                      <Image 
-                        source={getMonsterIcon(creature.iconUrl)} 
-                        style={styles.creatureIcon}
-                        resizeMode="cover"
-                      />
-                    </View>
+                  {[...creatures].sort((a, b) => a.y - b.y).map((creature) => (
+                    <CreatureMarker 
+                      key={creature.instanceId} 
+                      creature={creature} 
+                      mapWidth={mapWidth} 
+                      mapHeight={mapHeight} 
+                    />
                   ))}
 
                   <Animated.View style={[
@@ -234,14 +275,11 @@ export const MapView = ({ agentX, agentY, mapWidth, mapHeight, portals = [], cre
                       top: agentPosPerc.y.interpolate({ inputRange: [0, 100], outputRange: ['0%', '100%'] }),
                     },
                   ]}>
-                    <View style={styles.pulseRing} />
-                    <View style={styles.agentTag}>
-                      <Text style={styles.agentTagText}>{agentName}</Text>
-                      <Text style={styles.agentCoords}>({agentX}, {agentY})</Text>
-                    </View>
-                    <View style={styles.pinWrapper}>
-                      <MapPin size={28} color={theme.colors.accent} strokeWidth={3} fill={theme.colors.accent + '20'} />
-                    </View>
+                    <Image 
+                      source={require('../../../assets/agent/default.png')} 
+                      style={{ width: 64, height: 64 }} 
+                      resizeMode="contain"
+                    />
                   </Animated.View>
                 </View>
               </ImageBackground>

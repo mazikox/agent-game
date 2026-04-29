@@ -99,7 +99,7 @@ public class DataInitializer implements CommandLineRunner {
         initializePortals(forest, meadow, mine);
         initializePlayersAndAgents(forest);
         initializeMonsters(forest, mine);
-        
+
         // Populate Redis
         spawnService.spawnAllActivePoints();
     }
@@ -109,8 +109,8 @@ public class DataInitializer implements CommandLineRunner {
                 .name("Forest of Beginnings")
                 .description("A lush green forest where young agents learn basic survival skills.")
                 .type(LocationType.FOREST)
-                .width(100)
-                .height(100)
+                .width(400)
+                .height(300)
                 .build();
 
         Location meadow = Location.builder()
@@ -160,15 +160,15 @@ public class DataInitializer implements CommandLineRunner {
 
         // Initialize inventory for the agent
         Inventory inventory = Inventory.createDefault();
-        
+
         ItemDefinitionEntity swordEntity = itemDefinitionRepository.findById("sword_01").orElseThrow();
         ItemDefinitionEntity potionEntity = itemDefinitionRepository.findById("potion_hp").orElseThrow();
         ItemDefinitionEntity goldEntity = itemDefinitionRepository.findById("gold_coin").orElseThrow();
-        
+
         ItemDefinition swordDef = itemDefinitionMapper.toDomain(swordEntity);
         ItemDefinition potionDef = itemDefinitionMapper.toDomain(potionEntity);
         ItemDefinition goldDef = itemDefinitionMapper.toDomain(goldEntity);
-        
+
         inventory.addItem(new ItemStack(UUID.randomUUID(), swordDef, 1));
         inventory.addItem(new ItemStack(UUID.randomUUID(), potionDef, 5));
         inventory.addItem(new ItemStack(UUID.randomUUID(), goldDef, 10));
@@ -178,10 +178,17 @@ public class DataInitializer implements CommandLineRunner {
 
     private void initializeMonsters(Location forest, Location mine) {
         // Templates
-        CreatureTemplate wolf = CreatureTemplate.create("Forest Wolf", CreatureRank.NORMAL, 1, 50, 8, 25, 5, "/creatures/wolf.png");
-        CreatureTemplate spider = CreatureTemplate.create("Giant Spider", CreatureRank.ELITE, 3, 150, 15, 75, 8, "/creatures/spider.png");
-        CreatureTemplate dragon = CreatureTemplate.create("Shadowfang Dragon", CreatureRank.BOSS, 10, 2000, 50, 500, 15, "/creatures/dragon.png");
-        creatureTemplateRepository.saveAll(List.of(wolf, spider, dragon));
+        CreatureTemplate wolf = CreatureTemplate.create("Forest Wolf", CreatureRank.NORMAL, 1, 50, 8, 25, 5,
+                "/creatures/wolf.png");
+        CreatureTemplate spider = CreatureTemplate.create("Giant Spider", CreatureRank.ELITE, 3, 150, 15, 75, 8,
+                "/creatures/spider.png");
+        CreatureTemplate dragon = CreatureTemplate.create("Shadowfang Dragon", CreatureRank.BOSS, 10, 2000, 50, 500, 15,
+                "/creatures/dragon.png");
+        CreatureTemplate spruce = CreatureTemplate.create("Spruce Tree", CreatureRank.NORMAL, 1, 30, 0, 10, 1,
+                "/creatures/choinka.png");
+        CreatureTemplate spruceAlt = CreatureTemplate.create("Spruce Tree (Alt)", CreatureRank.NORMAL, 1, 30, 0, 10, 1,
+                "/creatures/choinkaINT.png");
+        creatureTemplateRepository.saveAll(List.of(wolf, spider, dragon, spruce, spruceAlt));
 
         // Spawn Points
         spawnPointRepository.save(SpawnPoint.create(wolf, forest, 30, 40, 5, 60));
@@ -202,33 +209,33 @@ public class DataInitializer implements CommandLineRunner {
     }
 
     private void initializeItemDefinitions() {
-        if (itemDefinitionRepository.count() > 0) return;
+        if (itemDefinitionRepository.count() > 0)
+            return;
 
         itemDefinitionRepository.saveAll(List.of(
-            ItemDefinitionEntity.builder()
-                .id("sword_01").name("Iron Sword")
-                .width(1).height(3).maxStack(1)
-                .iconUrl("/items/sword_01.png").build(),
-            ItemDefinitionEntity.builder()
-                .id("potion_hp").name("Health Potion")
-                .width(1).height(1).maxStack(20)
-                .iconUrl("/items/potion_hp.png").build(),
-            ItemDefinitionEntity.builder()
-                .id("wolf_pelt").name("Wolf Pelt")
-                .width(1).height(1).maxStack(20)
-                .iconUrl("/items/wolf_pelt.png").build(),
-            ItemDefinitionEntity.builder()
-                .id("wolf_fang").name("Wolf Fang")
-                .width(1).height(1).maxStack(10)
-                .iconUrl("/items/wolf_fang.png").build(),
-            ItemDefinitionEntity.builder()
-                .id("herb").name("Herb")
-                .width(1).height(1).maxStack(50)
-                .iconUrl("/items/herb.png").build(),
-            ItemDefinitionEntity.builder()
-                .id("gold_coin").name("Gold Coin")
-                .width(1).height(1).maxStack(999)
-                .iconUrl("/items/gold_coin.png").build()
-        ));
+                ItemDefinitionEntity.builder()
+                        .id("sword_01").name("Iron Sword")
+                        .width(1).height(3).maxStack(1)
+                        .iconUrl("/items/sword_01.png").build(),
+                ItemDefinitionEntity.builder()
+                        .id("potion_hp").name("Health Potion")
+                        .width(1).height(1).maxStack(20)
+                        .iconUrl("/items/potion_hp.png").build(),
+                ItemDefinitionEntity.builder()
+                        .id("wolf_pelt").name("Wolf Pelt")
+                        .width(1).height(1).maxStack(20)
+                        .iconUrl("/items/wolf_pelt.png").build(),
+                ItemDefinitionEntity.builder()
+                        .id("wolf_fang").name("Wolf Fang")
+                        .width(1).height(1).maxStack(10)
+                        .iconUrl("/items/wolf_fang.png").build(),
+                ItemDefinitionEntity.builder()
+                        .id("herb").name("Herb")
+                        .width(1).height(1).maxStack(50)
+                        .iconUrl("/items/herb.png").build(),
+                ItemDefinitionEntity.builder()
+                        .id("gold_coin").name("Gold Coin")
+                        .width(1).height(1).maxStack(999)
+                        .iconUrl("/items/gold_coin.png").build()));
     }
 }

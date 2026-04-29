@@ -3,6 +3,14 @@ import { View, Text, Image, StyleSheet, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { theme } from '../../theme/theme';
 
+const getEnemyIcon = (name) => {
+  if (!name) return require('../../../assets/monster_avatar.png');
+  const normName = name.toLowerCase();
+  if (normName.includes('wolf')) return require('../../../assets/monster_avatar.png');
+  if (normName.includes('spruce') || normName.includes('tree')) return require('../../../assets/mobs/choinka.png');
+  return require('../../../assets/mobs/bug.png');
+};
+
 export const CombatPanel = ({ 
   agentName = "Shadow-01", 
   enemyName = "Fierce Wolf",
@@ -49,7 +57,7 @@ export const CombatPanel = ({
         <View style={styles.avatarWrapper}>
           <View style={[styles.avatarCircle, { borderColor: '#e53e3e' }]}>
             <Image 
-              source={require('../../../assets/monster_avatar.png')} 
+              source={getEnemyIcon(enemyName)} 
               style={styles.combatAvatarImg} 
             />
           </View>

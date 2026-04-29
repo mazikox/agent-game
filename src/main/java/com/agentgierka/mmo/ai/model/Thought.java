@@ -2,11 +2,9 @@ package com.agentgierka.mmo.ai.model;
 
 import lombok.Builder;
 
+import java.util.List;
+
 @Builder(toBuilder = true)
 public record Thought(
-    String actionSummary,
-    String nextGoal,
-    Integer targetX,
-    Integer targetY,
-    String status
+    List<Decision> actions
 ) {}

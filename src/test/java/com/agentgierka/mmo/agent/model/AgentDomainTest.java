@@ -1,6 +1,7 @@
 package com.agentgierka.mmo.agent.model;
 
 import com.agentgierka.mmo.ai.model.Perception;
+import com.agentgierka.mmo.ai.model.ActionType;
 import com.agentgierka.mmo.ai.model.Thought;
 import com.agentgierka.mmo.world.Location;
 import org.junit.jupiter.api.DisplayName;
@@ -22,7 +23,7 @@ class AgentDomainTest {
         agent.updateStatus(AgentStatus.IDLE, "Resting"); // Ensure description matches test expectation
         List<String> nearby = List.of("Portal at (15, 15)");
 
-        Perception perception = agent.preparePerception(nearby);
+        Perception perception = agent.preparePerception(nearby, List.of());
 
         assertEquals("Gierko", perception.name());
         assertEquals(10, perception.x());
@@ -36,23 +37,20 @@ class AgentDomainTest {
     }
 
     @Test
-    @DisplayName("Should update internal state when applying a thought")
-    void shouldUpdateInternalStateWhenApplyingAThought() {
+    @DisplayName("Should update internal state when applying an action queue")
+    void shouldUpdateInternalStateWhenApplyingActionQueue() {
         Agent agent = Agent.create("Gierko", null, null, 0, 0, 1);
-        Thought thought = Thought.builder()
-                .targetX(100).targetY(200)
-                .status("MOVING")
-                .actionSummary("Decided to exploration")
-                .nextGoal("Explore new maps")
+        ActionStep step = ActionStep.builder()
+                .actionType(ActionType.MOVE_TO_CREATURE)
+                .actionSummary("Decided to attack")
                 .build();
 
-        agent.applyThought(thought);
+        agent.enqueueActions(List.of(step));
 
-        assertEquals(100, agent.getTargetX());
-        assertEquals(200, agent.getTargetY());
-        assertEquals(AgentStatus.MOVING, agent.getStatus());
-        assertEquals("Explore new maps", agent.getCurrentTask());
-        assertEquals("Decided to exploration", agent.getCurrentActionDescription());
+        assertTrue(agent.hasActions());
+        ActionStep popped = agent.popNextAction();
+        assertEquals(ActionType.MOVE_TO_CREATURE, popped.getActionType());
+        assertEquals("Decided to attack", popped.getActionSummary());
     }
 
     @Test

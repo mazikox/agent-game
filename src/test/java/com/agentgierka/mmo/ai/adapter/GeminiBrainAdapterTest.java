@@ -2,6 +2,7 @@ package com.agentgierka.mmo.ai.adapter;
 
 import com.agentgierka.mmo.ai.model.Perception;
 import com.agentgierka.mmo.ai.model.Thought;
+import com.agentgierka.mmo.ai.model.ActionType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -40,11 +41,14 @@ class GeminiBrainAdapterTest {
         Perception perception = createTestPerception(100, 100);
         String jsonResponse = """
                 {
-                  "actionSummary": "Moving to center",
-                  "nextGoal": "Reach (50, 50)",
-                  "targetX": 50,
-                  "targetY": 50,
-                  "status": "MOVING"
+                  "actions": [
+                    {
+                      "actionType": "MOVE_TO_CREATURE",
+                      "targetIndex": 0,
+                      "qualifier": "NEAREST",
+                      "actionSummary": "Moving to center"
+                    }
+                  ]
                 }
                 """;
         
@@ -56,9 +60,9 @@ class GeminiBrainAdapterTest {
 
         // Then
         assertThat(result).isNotNull();
-        assertThat(result.status()).isEqualTo("MOVING");
-        assertThat(result.targetX()).isEqualTo(50);
-        assertThat(result.actionSummary()).isEqualTo("Moving to center");
+        assertThat(result.actions()).hasSize(1);
+        assertThat(result.actions().get(0).actionType()).isEqualTo(ActionType.MOVE_TO_CREATURE);
+        assertThat(result.actions().get(0).actionSummary()).isEqualTo("Moving to center");
     }
 
     @Test
@@ -71,9 +75,10 @@ class GeminiBrainAdapterTest {
         Thought result = adapter.think(perception);
 
         // Then
-        assertThat(result.status()).isEqualTo("IDLE");
-        assertThat(result.actionSummary()).contains("AI thinking failed");
-        assertThat(result.actionSummary()).contains("API Timeout");
+        assertThat(result.actions()).hasSize(1);
+        assertThat(result.actions().get(0).actionType()).isEqualTo(ActionType.IDLE);
+        assertThat(result.actions().get(0).actionSummary()).contains("AI thinking failed");
+        assertThat(result.actions().get(0).actionSummary()).contains("API Timeout");
     }
 
     @Test
@@ -87,35 +92,9 @@ class GeminiBrainAdapterTest {
         Thought result = adapter.think(perception);
 
         // Then
-        assertThat(result.status()).isEqualTo("IDLE");
-        assertThat(result.actionSummary()).contains("AI had trouble thinking");
-    }
-
-    @Test
-    void think_HallucinationOutOfBounds_CorrectsCoordinates() {
-        // Given
-        Perception perception = createTestPerception(50, 50);
-        String hallucinatedResponse = """
-                {
-                  "actionSummary": "I will go far away",
-                  "nextGoal": "Escape the map",
-                  "targetX": 999,
-                  "targetY": 50,
-                  "status": "MOVING"
-                }
-                """;
-        
-        when(chatModel.call(any(Prompt.class))).thenReturn(chatResponse);
-        when(chatResponse.getResult().getOutput().getText()).thenReturn(hallucinatedResponse);
-
-        // When
-        Thought result = adapter.think(perception);
-
-        // Then
-        assertThat(result.status()).isEqualTo("IDLE");
-        assertThat(result.targetX()).isNull();
-        assertThat(result.actionSummary()).contains("AI hallucinated coordinates");
-        assertThat(result.actionSummary()).contains("999");
+        assertThat(result.actions()).hasSize(1);
+        assertThat(result.actions().get(0).actionType()).isEqualTo(ActionType.IDLE);
+        assertThat(result.actions().get(0).actionSummary()).contains("AI had trouble thinking");
     }
 
     private Perception createTestPerception(int width, int height) {

@@ -13,7 +13,9 @@ public record Perception(
     String locationName,
     String locationDescription,
     String currentGoal,
+    List<String> memoryLog,
     String lastActionDescription,
-    List<String> nearbyObjects
+    List<String> nearbyObjects,
+    List<String> visibleCreatures
 ) {}
 

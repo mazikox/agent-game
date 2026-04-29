@@ -5,6 +5,7 @@ import com.agentgierka.mmo.ai.service.AgentThinkingService;
 import com.agentgierka.mmo.agent.service.AgentService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,6 +25,7 @@ public class GoalAssignedListener {
     private final AgentThinkingService agentThinkingService;
     private final AgentService agentService;
 
+    @Async
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void onGoalAssigned(GoalAssignedEvent event) {

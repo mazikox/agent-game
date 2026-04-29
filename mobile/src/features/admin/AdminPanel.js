@@ -19,13 +19,15 @@ import { API_BASE_URL } from '../../api/agentApi';
 import { authService } from '../../api/authService';
 
 const MONSTER_ICONS = {
-  '/creatures/wolf.png': require('../../../assets/monster_avatar.png'),
-  '/creatures/spider.png': require('../../../assets/monster_avatar.png'),
-  '/creatures/dragon.png': require('../../../assets/monster_avatar.png'),
+  'Forest Wolf': require('../../../assets/monster_avatar.png'),
+  'Giant Spider': require('../../../assets/monster_avatar.png'),
+  'Shadowfang Dragon': require('../../../assets/monster_avatar.png'),
+  'Spruce Tree': require('../../../assets/mobs/choinka.png'),
+  'Spruce Tree (Alt)': require('../../../assets/mobs/choinkaINT.png'),
 };
 
-const getMonsterIcon = (iconUrl) => {
-  return MONSTER_ICONS[iconUrl] || require('../../../assets/monster_avatar.png');
+const getMonsterIcon = (name) => {
+  return MONSTER_ICONS[name] || require('../../../assets/monster_avatar.png');
 };
 
 export const AdminPanel = ({ agent, location, creatures }) => {
@@ -146,7 +148,7 @@ export const AdminPanel = ({ agent, location, creatures }) => {
                     onPress={() => setSelectedTemplate(t)}
                   >
                     <Image 
-                      source={getMonsterIcon(t.iconUrl)} 
+                      source={getMonsterIcon(t.name)} 
                       style={styles.monsterThumb} 
                     />
                     <View>

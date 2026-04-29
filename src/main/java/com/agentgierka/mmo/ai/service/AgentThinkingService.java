@@ -3,15 +3,24 @@ package com.agentgierka.mmo.ai.service;
 import com.agentgierka.mmo.agent.exception.AgentNotFoundException;
 import com.agentgierka.mmo.agent.model.Agent;
 import com.agentgierka.mmo.agent.model.AgentStatus;
+import com.agentgierka.mmo.agent.model.ActionStep;
+import com.agentgierka.mmo.ai.model.Decision;
+import com.agentgierka.mmo.ai.model.ActionType;
+import com.agentgierka.mmo.ai.model.QualifierType;
 import com.agentgierka.mmo.agent.repository.AgentRepository;
 import com.agentgierka.mmo.agent.service.WorldStateSynchronizer;
+import com.agentgierka.mmo.agent.service.ActionResolverService;
 import com.agentgierka.mmo.ai.model.Thought;
 import com.agentgierka.mmo.ai.port.Brain;
 import com.agentgierka.mmo.world.PortalRepository;
+import com.agentgierka.mmo.creature.repository.CreatureInstanceRepository;
+import com.agentgierka.mmo.creature.model.CreatureState;
+import com.agentgierka.mmo.agent.event.AgentConsoleLogEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.List;
 import java.util.UUID;
@@ -24,8 +33,11 @@ public class AgentThinkingService {
 
     private final AgentRepository agentRepository;
     private final PortalRepository portalRepository;
+    private final CreatureInstanceRepository creatureInstanceRepository;
     private final WorldStateSynchronizer worldStateSynchronizer;
     private final Brain brain;
+    private final ApplicationEventPublisher eventPublisher;
+    private final ActionResolverService actionResolverService;
 
     @Transactional
     public void processThinking(UUID agentId) {
@@ -45,24 +57,88 @@ public class AgentThinkingService {
                         p.getTargetLocation().getName(), p.getSourceX(), p.getSourceY()))
                 .collect(Collectors.toList());
 
-        log.info("--- AI THINKING START for Agent: {} ---", agent.getName());
-        log.info("Perception: Goal='{}', Location='{}', size={}x{}, Coordinates=({},{}), Portals={}",
-                 agent.getGoal(), agent.getCurrentLocation().getName(), 
-                 agent.getCurrentLocation().getWidth(), agent.getCurrentLocation().getHeight(),
-                 agent.getX(), agent.getY(), portals);
+        List<String> creatures = creatureInstanceRepository.findAllByLocationId(agent.getCurrentLocation().getId())
+                .stream()
+                .filter(c -> c.getState() != CreatureState.DEAD)
+                .map(c -> String.format("%s at (%d, %d) HP:%d/%d [State: %s]",
+                        c.getName(), c.getX(), c.getY(), c.getCurrentHp(), c.getMaxHp(), c.getState()))
+                .collect(Collectors.toList());
 
-        Thought thought = brain.think(agent.preparePerception(portals));
+        try {
+            log.info("--- AI THINKING START for Agent: {} ---", agent.getName());
+            Thought thought = brain.think(agent.preparePerception(portals, creatures));
+            log.info("--- AI THINKING END ---");
 
-        log.info("AI DECISION for {}: Action='{}', Next Goal='{}', MoveTo=({}, {}), Status={}",
-                 agent.getName(), thought.actionSummary(), thought.nextGoal(), thought.targetX(), thought.targetY(), thought.status());
-        log.info("--- AI THINKING END ---");
+            if (thought != null && thought.actions() != null && !thought.actions().isEmpty()) {
+                List<ActionStep> steps = thought.actions().stream()
+                        .map(d -> ActionStep.create(
+                                safeParseEnum(d.actionType(), ActionType.class, ActionType.UNKNOWN),
+                                d.targetIndex(),
+                                safeParseEnum(d.qualifier(), QualifierType.class, null),
+                                d.rawX(),
+                                d.rawY(),
+                                d.actionSummary()
+                        ))
+                        .collect(Collectors.toList());
 
-        agent.applyThought(thought);
+                agent.enqueueActions(steps);
 
-        agentRepository.save(agent);
+                String sequenceSummary = thought.actions().stream()
+                        .map(Decision::actionSummary)
+                        .collect(Collectors.joining(" -> "));
+
+                // Domain persistence fallback (inline for now to keep Agent clean)
+                String logMessage = "[AKCJA] AI: " + sequenceSummary;
+                if (logMessage.length() > 255) {
+                    logMessage = logMessage.substring(0, 252) + "...";
+                }
+                agent.getMemoryLog().add(0, logMessage);
+                while (agent.getMemoryLog().size() > 10) {
+                    agent.getMemoryLog().remove(agent.getMemoryLog().size() - 1);
+                }
+            }
+
+            executeNextActionStep(agent);
+            agent.consumeThinkingStep();
+            agentRepository.save(agent);
+        } catch (Exception e) {
+            log.error("Error during AI thinking process for agent {}: {}", agent.getName(), e.getMessage(), e);
+            agent.updateStatus(AgentStatus.IDLE, "AI had trouble thinking (" + e.getMessage() + "). Standing by.");
+            agentRepository.save(agent);
+        }
+    }
+
+    private void executeNextActionStep(Agent agent) {
+        if (!agent.hasActions()) {
+            return;
+        }
+
+        ActionStep nextStep = agent.popNextAction();
+        ActionResolverService.ResolvedTarget resolved = actionResolverService.resolve(agent, nextStep);
+
+        agent.startMovement(resolved.x(), resolved.y(), nextStep.getActionSummary());
+        
+        try {
+            agent.updateStatus(resolved.status(), nextStep.getActionSummary());
+        } catch (Exception e) {
+            log.error("Failed to update status: {}", e.getMessage());
+        }
+
+        eventPublisher.publishEvent(new AgentConsoleLogEvent(agent.getId(), "[AI] " + nextStep.getActionSummary()));
 
         if (agent.getStatus() == AgentStatus.MOVING) {
             worldStateSynchronizer.syncMovementAfterCommit(agent);
+        }
+    }
+
+    private <E extends Enum<E>> E safeParseEnum(String value, Class<E> enumType, E defaultValue) {
+        if (value == null || value.isBlank()) {
+            return defaultValue;
+        }
+        try {
+            return Enum.valueOf(enumType, value.trim().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            return defaultValue;
         }
     }
 }
