@@ -155,7 +155,7 @@ public class DataInitializer implements CommandLineRunner {
         Player master = Player.create("MasterAdmin", passwordEncoder.encode("admin123"));
         playerRepository.save(master);
 
-        Agent scout = Agent.create("Shadow-01", master, startingLocation, 50, 50, 2);
+        Agent scout = Agent.create("Shadow-01", master, startingLocation, 50, 50, 5);
         agentRepository.save(scout);
 
         // Initialize inventory for the agent

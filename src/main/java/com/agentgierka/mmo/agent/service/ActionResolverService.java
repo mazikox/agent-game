@@ -37,6 +37,7 @@ public class ActionResolverService {
             case MOVE_TO_PORTAL -> resolvePortal(agent, step);
             case MOVE_TO_POSITION -> resolvePosition(agent, step);
             case MOVE_RELATIVE -> resolveRelative(agent, step);
+            case MOVE_DIRECTION -> resolveDirection(agent, step);
             case IDLE -> new ResolvedTarget(agent.getX(), agent.getY(), AgentStatus.IDLE);
             default -> new ResolvedTarget(agent.getX(), agent.getY(), AgentStatus.IDLE);
         };
@@ -110,6 +111,14 @@ public class ActionResolverService {
         int newX = agent.getX() + (step.getRawX() != null ? step.getRawX() : 0);
         int newY = agent.getY() + (step.getRawY() != null ? step.getRawY() : 0);
         return new ResolvedTarget(newX, newY, AgentStatus.MOVING);
+    }
+
+    private ResolvedTarget resolveDirection(Agent agent, ActionStep step) {
+        if (step.getDirection() != null) {
+            Agent.Point target = agent.calculateTarget(step.getDirection(), step.getSteps());
+            return new ResolvedTarget(target.x(), target.y(), AgentStatus.MOVING);
+        }
+        return new ResolvedTarget(agent.getX(), agent.getY(), AgentStatus.IDLE);
     }
 
     private double distance(int x1, int y1, int x2, int y2) {

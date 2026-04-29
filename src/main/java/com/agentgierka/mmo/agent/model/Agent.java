@@ -2,6 +2,7 @@ package com.agentgierka.mmo.agent.model;
 
 import com.agentgierka.mmo.ai.model.Perception;
 import com.agentgierka.mmo.ai.model.Thought;
+import com.agentgierka.mmo.ai.model.Direction;
 import com.agentgierka.mmo.player.Player;
 import com.agentgierka.mmo.world.Location;
 import jakarta.persistence.*;
@@ -50,10 +51,18 @@ public class Agent {
     private Integer targetY;
 
     @Builder.Default
-    private Integer speed = 1;
+    private Integer speed = 5;
+
+    public void changeSpeed(Integer newSpeed) {
+        this.speed = newSpeed;
+    }
 
     @Enumerated(EnumType.STRING)
     private AgentStatus status;
+
+    @Enumerated(EnumType.STRING)
+    @Builder.Default
+    private GoalExecutionMode executionMode = GoalExecutionMode.SIMPLE;
 
     private String goal;
 
@@ -112,6 +121,11 @@ public class Agent {
         this.targetX = null;
         this.targetY = null;
         this.status = AgentStatus.IDLE;
+        this.executionMode = GoalExecutionMode.SIMPLE;
+    }
+
+    public void changeExecutionMode(GoalExecutionMode mode) {
+        this.executionMode = mode;
     }
 
     public void enqueueActions(List<ActionStep> steps) {
@@ -252,5 +266,30 @@ public class Agent {
 
     public void clearTarget() {
         this.targetId = null;
+    }
+
+    public record Point(int x, int y) {}
+
+    public Point calculateTarget(Direction direction, Integer steps) {
+        int newX = this.x != null ? this.x : 0;
+        int newY = this.y != null ? this.y : 0;
+        int moveSteps = steps != null ? steps : 0;
+        
+        if (direction != null) {
+            switch (direction) {
+                case UP -> newY -= moveSteps;
+                case DOWN -> newY += moveSteps;
+                case LEFT -> newX -= moveSteps;
+                case RIGHT -> newX += moveSteps;
+            }
+        }
+        
+        int maxWidth = currentLocation != null && currentLocation.getWidth() != null ? currentLocation.getWidth() : Integer.MAX_VALUE;
+        int maxHeight = currentLocation != null && currentLocation.getHeight() != null ? currentLocation.getHeight() : Integer.MAX_VALUE;
+        
+        newX = Math.max(0, Math.min(newX, maxWidth));
+        newY = Math.max(0, Math.min(newY, maxHeight));
+        
+        return new Point(newX, newY);
     }
 }

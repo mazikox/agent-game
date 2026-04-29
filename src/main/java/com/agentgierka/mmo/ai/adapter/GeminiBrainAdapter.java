@@ -12,8 +12,10 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import lombok.extern.slf4j.Slf4j;
 
 @Component
+@Slf4j
 @Profile("!test")
 public class GeminiBrainAdapter implements Brain {
 
@@ -29,8 +31,14 @@ public class GeminiBrainAdapter implements Brain {
     public Thought think(Perception perception) {
         try {
             String systemText = """
-                    You are the intent classification brain of an agent in a persistent MMO idle game.
-                    Your job is to break down the 'Current Goal' into a sequence of logical steps (List of Decisions).
+                    You are a LITERAL command interpreter for an agent in an MMO game.
+                    Your ONLY job is to translate the 'Current Goal' into the MINIMUM number of game actions needed.
+                    
+                    CRITICAL RULES:
+                    1. Interpret the goal LITERALLY. If the user says 'go 5 steps left', return exactly ONE MOVE_DIRECTION action with direction=LEFT, steps=5. Do NOT invent extra steps.
+                    2. Most goals require exactly 1 action. Use multiple actions ONLY when the goal EXPLICITLY asks for distinct sequential steps (e.g., 'go right 3 then go down 2').
+                    3. NEVER return more actions than the user asked for. Maximum is 3 actions.
+                    4. If the goal means stop, wait, stand still, idle, or do nothing → return a SINGLE action with actionType=IDLE.
                     
                     Map Coordinate System:
                     - (0, 0) is the top-left corner of the map.
@@ -38,26 +46,20 @@ public class GeminiBrainAdapter implements Brain {
                     - Going RIGHT INCREASES X. Going LEFT DECREASES X.
 
                     Available Action Types:
-                    - MOVE_TO_CREATURE: Go to a monster.
-                    - MOVE_TO_PORTAL: Go to a teleport gate.
-                    - MOVE_TO_POSITION: Go to absolute coordinates. Use this WHENEVER explicit coordinates (like '50,30') are provided.
-                    - MOVE_RELATIVE: Step by a relative amount (e.g., offset from current position).
-                    - IDLE: Stand still.
-                    - UNKNOWN: Use when completely unsure.
+                    - MOVE_DIRECTION: Move N steps in a cardinal direction. Set 'direction' (UP/DOWN/LEFT/RIGHT) and 'steps' (integer). Use this for directional commands like 'go left', 'move up 10', etc.
+                    - MOVE_TO_CREATURE: Go to a visible monster.
+                    - MOVE_TO_PORTAL: Go to a visible teleport gate.
+                    - MOVE_TO_POSITION: Go to absolute coordinates (rawX, rawY). Use ONLY when explicit coordinates are given.
+                    - IDLE: Do nothing. Stay in place. Use for: stop, wait, stand, rest, halt, etc.
 
-                    Targeting Rules:
-                    1. Use 'targetIndex' (0-indexed integer) to pick a specific monster or portal from the lists provided in your Perception.
-                    2. If you don't use targetIndex, use 'qualifier':
-                       - NEAREST: Pick the closest one.
-                       - NEAREST_OTHER: Pick the closest one that isn't the current one.
-                       - SPECIFIC: Target a specific named entity.
-                    3. 'rawX' and 'rawY' MUST be filled for MOVE_TO_POSITION (use absolute X,Y) or MOVE_RELATIVE (use relative offset like X=5, Y=-3).
+                    Targeting Rules (for MOVE_TO_CREATURE / MOVE_TO_PORTAL):
+                    - Use 'targetIndex' (0-indexed) to pick from the Visible lists.
+                    - Or use 'qualifier': NEAREST, NEAREST_OTHER, or SPECIFIC.
 
-                    Multi-Step Sequences:
-                    - If the goal says "do X and then do Y", return exactly TWO actions in the actions array.
-
-                    Language Rule:
-                    - Write your 'actionSummary' in the same language as the 'Current Goal' (e.g., Polish if user typed Polish).
+                    Field Rules:
+                    - 'rawX'/'rawY': fill ONLY for MOVE_TO_POSITION.
+                    - 'direction'/'steps': fill ONLY for MOVE_DIRECTION.
+                    - 'actionSummary': short description in the SAME LANGUAGE as the goal.
 
                     Always respond in JSON.
                     """ + "\n" + converter.getFormat();
@@ -75,7 +77,7 @@ public class GeminiBrainAdapter implements Brain {
                     Visible Portals (World Gates): %s
                     Visible Creatures (Monsters): %s
                     
-                    Decide your next logical steps.
+                    Translate this goal into the appropriate action(s).
                     """.formatted(
                     perception.name(),
                     perception.mapWidth(),
@@ -106,6 +108,8 @@ public class GeminiBrainAdapter implements Brain {
             if (content == null || content.isBlank()) {
                 return createFallbackThought("AI response was empty.");
             }
+
+            log.info("RAW AI Response for agent {}: \n{}", perception.name(), content);
 
             return converter.convert(content);
 

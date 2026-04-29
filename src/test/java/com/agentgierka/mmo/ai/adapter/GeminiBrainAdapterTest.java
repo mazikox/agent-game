@@ -61,7 +61,7 @@ class GeminiBrainAdapterTest {
         // Then
         assertThat(result).isNotNull();
         assertThat(result.actions()).hasSize(1);
-        assertThat(result.actions().get(0).actionType()).isEqualTo(ActionType.MOVE_TO_CREATURE);
+        assertThat(result.actions().get(0).actionType()).isEqualTo(ActionType.MOVE_TO_CREATURE.name());
         assertThat(result.actions().get(0).actionSummary()).isEqualTo("Moving to center");
     }
 
@@ -76,7 +76,7 @@ class GeminiBrainAdapterTest {
 
         // Then
         assertThat(result.actions()).hasSize(1);
-        assertThat(result.actions().get(0).actionType()).isEqualTo(ActionType.IDLE);
+        assertThat(result.actions().get(0).actionType()).isEqualTo(ActionType.IDLE.name());
         assertThat(result.actions().get(0).actionSummary()).contains("AI thinking failed");
         assertThat(result.actions().get(0).actionSummary()).contains("API Timeout");
     }
@@ -93,7 +93,7 @@ class GeminiBrainAdapterTest {
 
         // Then
         assertThat(result.actions()).hasSize(1);
-        assertThat(result.actions().get(0).actionType()).isEqualTo(ActionType.IDLE);
+        assertThat(result.actions().get(0).actionType()).isEqualTo(ActionType.IDLE.name());
         assertThat(result.actions().get(0).actionSummary()).contains("AI had trouble thinking");
     }
 

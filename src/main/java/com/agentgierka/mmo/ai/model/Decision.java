@@ -9,5 +9,7 @@ public record Decision(
     String qualifier,
     Integer rawX,
     Integer rawY,
+    String direction,
+    Integer steps,
     String actionSummary
 ) {}
