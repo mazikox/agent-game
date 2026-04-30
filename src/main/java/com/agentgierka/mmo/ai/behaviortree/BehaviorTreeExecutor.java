@@ -1,7 +1,6 @@
 package com.agentgierka.mmo.ai.behaviortree;
 
 import com.agentgierka.mmo.agent.model.Agent;
-import com.agentgierka.mmo.agent.service.ActionResolverService;
 import com.agentgierka.mmo.combat.service.CombatService;
 import com.agentgierka.mmo.creature.repository.CreatureInstanceRepository;
 import com.agentgierka.mmo.world.PortalRepository;
@@ -15,13 +14,16 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
+import java.util.concurrent.TimeUnit;
+
 @Service
 @Slf4j
 @RequiredArgsConstructor
 public class BehaviorTreeExecutor {
 
     private final BehaviorTreeRegistry registry;
-    private final ActionResolverService actionResolver;
     private final CreatureInstanceRepository creatureRepository;
     private final PortalRepository portalRepository;
     private final CombatService combatService;
@@ -30,7 +32,9 @@ public class BehaviorTreeExecutor {
     @Value("${game.behavior-tree.max-ticks:100}")
     private int maxTicks;
 
-    private final Map<UUID, Integer> tickCounters = new ConcurrentHashMap<>();
+    private final Cache<UUID, Integer> tickCounters = Caffeine.newBuilder()
+            .expireAfterWrite(2, TimeUnit.HOURS)
+            .build();
 
     public void tick(Agent agent) {
         BehaviorNode tree = registry.get(agent.getId()).orElse(null);
@@ -39,7 +43,7 @@ public class BehaviorTreeExecutor {
             return;
         }
 
-        int currentTicks = tickCounters.merge(agent.getId(), 1, Integer::sum);
+        int currentTicks = tickCounters.asMap().merge(agent.getId(), 1, Integer::sum);
         if (currentTicks > maxTicks) {
             log.warn("Agent {} exceeded max behavior tree ticks ({}). Aborting.", agent.getName(), maxTicks);
             cleanUp(agent.getId());
@@ -48,7 +52,7 @@ public class BehaviorTreeExecutor {
         }
 
         BehaviorContext context = new BehaviorContext(
-                agent, actionResolver, creatureRepository, portalRepository, combatService, eventPublisher
+                agent, creatureRepository, portalRepository, combatService, eventPublisher
         );
 
         try {
@@ -70,6 +74,6 @@ public class BehaviorTreeExecutor {
 
     private void cleanUp(UUID agentId) {
         registry.remove(agentId);
-        tickCounters.remove(agentId);
+        tickCounters.invalidate(agentId);
     }
 }

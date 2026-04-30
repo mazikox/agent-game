@@ -1,8 +1,7 @@
 package com.agentgierka.mmo.agent.model;
 
 import com.agentgierka.mmo.ai.model.Perception;
-import com.agentgierka.mmo.ai.model.ActionType;
-import com.agentgierka.mmo.ai.model.Thought;
+
 import com.agentgierka.mmo.world.Location;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -19,7 +18,7 @@ class AgentDomainTest {
     void shouldPreparePerceptionWithAllRelevantAgentState() {
         Location forest = Location.builder().name("Deep Forest").width(100).height(100).build();
         Agent agent = Agent.create("Gierko", null, forest, 10, 20, 1);
-        agent.assignGoal("Find a portal", 10);
+        agent.assignGoal("Find a portal");
         agent.updateStatus(AgentStatus.IDLE, "Resting"); // Ensure description matches test expectation
         List<String> nearby = List.of("Portal at (15, 15)");
 
@@ -34,23 +33,6 @@ class AgentDomainTest {
         assertEquals(100, perception.mapWidth());
         assertEquals(100, perception.mapHeight());
         assertTrue(perception.nearbyObjects().contains("Portal at (15, 15)"));
-    }
-
-    @Test
-    @DisplayName("Should update internal state when applying an action queue")
-    void shouldUpdateInternalStateWhenApplyingActionQueue() {
-        Agent agent = Agent.create("Gierko", null, null, 0, 0, 1);
-        ActionStep step = ActionStep.builder()
-                .actionType(ActionType.MOVE_TO_CREATURE)
-                .actionSummary("Decided to attack")
-                .build();
-
-        agent.enqueueActions(List.of(step));
-
-        assertTrue(agent.hasActions());
-        ActionStep popped = agent.popNextAction();
-        assertEquals(ActionType.MOVE_TO_CREATURE, popped.getActionType());
-        assertEquals("Decided to attack", popped.getActionSummary());
     }
 
     @Test

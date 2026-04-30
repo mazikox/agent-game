@@ -1,7 +1,6 @@
 package com.agentgierka.mmo.agent.model;
 
 import com.agentgierka.mmo.ai.model.Perception;
-import com.agentgierka.mmo.ai.model.Thought;
 import com.agentgierka.mmo.ai.model.Direction;
 import com.agentgierka.mmo.player.Player;
 import com.agentgierka.mmo.world.Location;
@@ -60,23 +59,12 @@ public class Agent {
     @Enumerated(EnumType.STRING)
     private AgentStatus status;
 
-    @Enumerated(EnumType.STRING)
-    @Builder.Default
-    private GoalExecutionMode executionMode = GoalExecutionMode.SIMPLE;
-
     private String goal;
 
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "agent_memory_log", joinColumns = @JoinColumn(name = "agent_id"))
     @Builder.Default
     private List<String> memoryLog = new ArrayList<>();
-
-    @ElementCollection(fetch = FetchType.EAGER)
-    @CollectionTable(name = "agent_action_queue", joinColumns = @JoinColumn(name = "agent_id"))
-    @Builder.Default
-    private List<ActionStep> actionQueue = new ArrayList<>();
-
-    private Integer remainingThinkingSteps;
 
     private String currentTask;
 
@@ -103,47 +91,19 @@ public class Agent {
                 .build();
     }
 
-    public void assignGoal(String newGoal, int quota) {
+    public void assignGoal(String newGoal) {
         if (this.memoryLog == null) {
             this.memoryLog = new ArrayList<>();
         }
-        if (this.actionQueue == null) {
-            this.actionQueue = new ArrayList<>();
-        }
-        this.actionQueue.clear();
         this.memoryLog.add(0, "[CEL] Gracz: " + newGoal);
         while (this.memoryLog.size() > 10) {
             this.memoryLog.remove(this.memoryLog.size() - 1);
         }
         this.goal = newGoal;
-        this.remainingThinkingSteps = quota;
         this.currentTask = "Waiting for goal analysis...";
         this.targetX = null;
         this.targetY = null;
         this.status = AgentStatus.IDLE;
-        this.executionMode = GoalExecutionMode.SIMPLE;
-    }
-
-    public void changeExecutionMode(GoalExecutionMode mode) {
-        this.executionMode = mode;
-    }
-
-    public void enqueueActions(List<ActionStep> steps) {
-        if (this.actionQueue == null) {
-            this.actionQueue = new ArrayList<>();
-        }
-        this.actionQueue.addAll(steps);
-    }
-
-    public ActionStep popNextAction() {
-        if (this.actionQueue == null || this.actionQueue.isEmpty()) {
-            return null;
-        }
-        return this.actionQueue.remove(0);
-    }
-
-    public boolean hasActions() {
-        return this.actionQueue != null && !this.actionQueue.isEmpty();
     }
 
     public void cancelCurrentGoal() {
@@ -152,7 +112,6 @@ public class Agent {
         this.targetY = null;
         this.status = AgentStatus.IDLE;
         this.currentActionDescription = "Goal cancelled by user.";
-        this.remainingThinkingSteps = 0;
     }
 
     public boolean hasActiveGoal() {
@@ -179,10 +138,6 @@ public class Agent {
         this.targetY = null;
         this.status = AgentStatus.IDLE;
         this.currentActionDescription = "Arrived at destination (" + x + ", " + y + ")";
-        
-        if (remainingThinkingSteps != null && remainingThinkingSteps <= 0) {
-            this.goal = null;
-        }
     }
 
     public void teleport(Location location, Integer x, Integer y) {
@@ -214,6 +169,7 @@ public class Agent {
                 .name(this.name)
                 .x(this.x)
                 .y(this.y)
+                .level(this.stats != null ? this.stats.getLevel() : 1)
                 .mapWidth(currentLocation != null && currentLocation.getWidth() != null ? currentLocation.getWidth() : 0)
                 .mapHeight(currentLocation != null && currentLocation.getHeight() != null ? currentLocation.getHeight() : 0)
                 .locationName(currentLocation != null ? currentLocation.getName() : "Unknown")
@@ -226,15 +182,7 @@ public class Agent {
                 .build();
     }
 
-    public void consumeThinkingStep() {
-        if (remainingThinkingSteps != null) {
-            remainingThinkingSteps--;
-            if (remainingThinkingSteps <= 0 && status == AgentStatus.IDLE) {
-                this.goal = null;
-                this.currentActionDescription = "Task finished (Manual mode).";
-            }
-        }
-    }
+
 
 
     // --- Rich Domain Methods for RPG ---

@@ -11,7 +11,6 @@ import com.agentgierka.mmo.engine.GameEngine;
 import com.agentgierka.mmo.player.Player;
 import com.agentgierka.mmo.player.PlayerRepository;
 import com.agentgierka.mmo.security.AgentSecurity;
-import com.agentgierka.mmo.ai.port.Brain;
 import com.agentgierka.mmo.engine.EngineControl;
 import com.agentgierka.mmo.agent.web.dto.MoveRequest;
 import com.agentgierka.mmo.world.*;
@@ -79,8 +78,6 @@ class AgentMovementE2ETest {
     @MockitoBean
     private AgentSecurity agentSecurity;
 
-    @MockitoBean
-    private Brain brain;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 

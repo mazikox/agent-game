@@ -10,6 +10,10 @@ import com.agentgierka.mmo.ai.behaviortree.leaf.EnterPortalAction;
 import com.agentgierka.mmo.ai.behaviortree.leaf.FindNearestCreatureAction;
 import com.agentgierka.mmo.ai.behaviortree.leaf.FindPortalAction;
 import com.agentgierka.mmo.ai.behaviortree.leaf.MoveToTargetAction;
+import com.agentgierka.mmo.ai.behaviortree.leaf.MoveDirectionAction;
+import com.agentgierka.mmo.ai.behaviortree.leaf.MoveToPositionAction;
+import com.agentgierka.mmo.ai.behaviortree.leaf.IdleAction;
+import com.agentgierka.mmo.ai.model.Direction;
 import com.agentgierka.mmo.ai.model.Perception;
 import com.agentgierka.mmo.ai.port.GoalPlanner;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -46,11 +50,10 @@ public class GeminiGoalPlannerAdapter implements GoalPlanner {
         try {
             String systemText = """
                     You are a high-level Strategy Planner for an MMO AI agent.
-                    Your job is to decide whether a player's goal requires a complex Behavior Tree OR a simple atomic action.
-
+                    Your job is to generate a Behavior Tree for a player's goal.
+                    
                     CRITICAL RULE:
-                    - If the goal is a SINGLE ATOMIC action (e.g., "go left", "move down 5", "wait", "stand still"), return {"isSimple": true}. Do NOT generate a Behavior Tree for simple tasks!
-                    - If the goal requires repetitive tasks, multiple sequential steps, or conditions (e.g., "grind until level 5", "kill a monster then go to the city"), return {"isSimple": false, "tree": { ... }}.
+                    - You MUST ALWAYS return a Behavior Tree. Even if the goal is a SINGLE ATOMIC action (e.g., "go left", "move down 5", "wait", "stand still"), return a single-node tree.
 
                     Behavior Tree Node Types available:
                     1. SEQUENCE: Executes children in order.
@@ -61,17 +64,23 @@ public class GeminiGoalPlannerAdapter implements GoalPlanner {
                     6. ATTACK_TARGET: Attacks the creature (Leaf). Wait mode for manual combat.
                     7. FIND_PORTAL: Finds portal by name. Requires "targetLocation" (Leaf).
                     8. ENTER_PORTAL: Uses the portal (Leaf).
+                    9. MOVE_DIRECTION: Moves N steps in a given direction. Fields: direction (UP/DOWN/LEFT/RIGHT), steps (Leaf).
+                    10. MOVE_TO_POSITION: Moves to absolute coordinates. Fields: rawX, rawY (Leaf).
+                    11. IDLE: Stand still / do nothing. No extra fields (Leaf).
 
                     Conditions available for REPEAT_UNTIL:
                     - "level >= X": X is the target level.
 
                     Output MUST be JSON conforming to this structure:
                     {
-                      "isSimple": boolean,
                       "tree": {
-                        "type": "SEQUENCE" | "SELECTOR" | "REPEAT_UNTIL" | "FIND_NEAREST_CREATURE" | "MOVE_TO_TARGET" | "ATTACK_TARGET" | "FIND_PORTAL" | "ENTER_PORTAL",
+                        "type": "SEQUENCE" | "SELECTOR" | "REPEAT_UNTIL" | "FIND_NEAREST_CREATURE" | "MOVE_TO_TARGET" | "ATTACK_TARGET" | "FIND_PORTAL" | "ENTER_PORTAL" | "MOVE_DIRECTION" | "MOVE_TO_POSITION" | "IDLE",
                         "targetLocation": string (only for FIND_PORTAL),
                         "condition": string (only for REPEAT_UNTIL),
+                        "direction": string (only for MOVE_DIRECTION),
+                        "steps": number (only for MOVE_DIRECTION),
+                        "rawX": number (only for MOVE_TO_POSITION),
+                        "rawY": number (only for MOVE_TO_POSITION),
                         "children": [ recursive tree nodes ]
                       }
                     }
@@ -79,7 +88,9 @@ public class GeminiGoalPlannerAdapter implements GoalPlanner {
                     Return raw JSON only.
                     """;
 
-            String userPrompt = "Current Goal: " + goal + "\nAgent Level: " + (perception != null ? 1 : 1); // Simple placeholder for level check
+            int agentLevel = perception.level() != null ? perception.level() : 1;
+
+            String userPrompt = "Current Goal: " + goal + "\nAgent Level: " + agentLevel;
 
             String response = chatModel.call(new Prompt(systemText + "\n" + userPrompt)).getResult().getOutput().getText();
             
@@ -92,11 +103,11 @@ public class GeminiGoalPlannerAdapter implements GoalPlanner {
             log.info("RAW Planner AI Response for agent: \n{}", response);
             PlannerResponse planned = objectMapper.readValue(response, PlannerResponse.class);
 
-            if (planned.isSimple() || planned.getTree() == null) {
+            if (planned.getTree() == null) {
                 return Optional.empty();
             }
 
-            return Optional.ofNullable(buildNode(planned.getTree()));
+            return Optional.ofNullable(buildNode(planned.getTree(), 0));
 
         } catch (Exception e) {
             log.error("CRITICAL ERROR while planning Behavior Tree via Gemini: {}", e.getMessage(), e);
@@ -104,12 +115,15 @@ public class GeminiGoalPlannerAdapter implements GoalPlanner {
         }
     }
 
-    private BehaviorNode buildNode(BehaviorTreeDto dto) {
+    private BehaviorNode buildNode(BehaviorTreeDto dto, int depth) {
+        if (depth > 10) {
+            throw new IllegalStateException("Behavior tree is too deep (exceeded maximum depth of 10)");
+        }
         if (dto == null || dto.getType() == null) return null;
 
         return switch (dto.getType().toUpperCase()) {
-            case "SEQUENCE" -> new SequenceNode(buildChildren(dto.getChildren()));
-            case "SELECTOR" -> new SelectorNode(buildChildren(dto.getChildren()));
+            case "SEQUENCE" -> new SequenceNode(buildChildren(dto.getChildren(), depth + 1));
+            case "SELECTOR" -> new SelectorNode(buildChildren(dto.getChildren(), depth + 1));
             case "REPEAT_UNTIL" -> new RepeatUntilNode(
                     ctx -> {
                         if (dto.getCondition() != null && dto.getCondition().startsWith("level >= ")) {
@@ -122,21 +136,30 @@ public class GeminiGoalPlannerAdapter implements GoalPlanner {
                         }
                         return false;
                     },
-                    buildNode(dto.getChild())
+                    buildNode(dto.getChild(), depth + 1)
             );
             case "FIND_NEAREST_CREATURE" -> new FindNearestCreatureAction();
             case "MOVE_TO_TARGET" -> new MoveToTargetAction();
             case "ATTACK_TARGET" -> new AttackTargetAction();
             case "FIND_PORTAL" -> new FindPortalAction(dto.getTargetLocation());
             case "ENTER_PORTAL" -> new EnterPortalAction();
+            case "MOVE_DIRECTION" -> new MoveDirectionAction(
+                    dto.getDirection() != null ? Direction.valueOf(dto.getDirection().toUpperCase()) : null,
+                    dto.getSteps() != null ? dto.getSteps() : 0
+            );
+            case "MOVE_TO_POSITION" -> new MoveToPositionAction(
+                    dto.getRawX() != null ? dto.getRawX() : 0,
+                    dto.getRawY() != null ? dto.getRawY() : 0
+            );
+            case "IDLE" -> new IdleAction();
             default -> throw new IllegalArgumentException("Unknown BT node type: " + dto.getType());
         };
     }
 
-    private List<BehaviorNode> buildChildren(List<BehaviorTreeDto> dtos) {
+    private List<BehaviorNode> buildChildren(List<BehaviorTreeDto> dtos, int depth) {
         if (dtos == null) return List.of();
         return dtos.stream()
-                .map(this::buildNode)
+                .map(dto -> buildNode(dto, depth))
                 .collect(Collectors.toList());
     }
 }
@@ -146,8 +169,6 @@ public class GeminiGoalPlannerAdapter implements GoalPlanner {
 @NoArgsConstructor
 @AllArgsConstructor
 class PlannerResponse {
-    @JsonProperty("isSimple")
-    private boolean isSimple;
     private BehaviorTreeDto tree;
 }
 
@@ -159,6 +180,10 @@ class BehaviorTreeDto {
     private String type;
     private String targetLocation;
     private String condition;
+    private String direction;
+    private Integer steps;
+    private Integer rawX;
+    private Integer rawY;
     private List<BehaviorTreeDto> children;
 
     public BehaviorTreeDto getChild() {

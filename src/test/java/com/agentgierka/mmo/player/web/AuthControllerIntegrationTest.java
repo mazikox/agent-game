@@ -2,7 +2,6 @@ package com.agentgierka.mmo.player.web;
 
 import com.agentgierka.mmo.agent.repository.AgentRepository;
 import com.agentgierka.mmo.agent.repository.AgentWorldStateRepository;
-import com.agentgierka.mmo.ai.port.Brain;
 import com.agentgierka.mmo.player.PlayerRepository;
 import com.agentgierka.mmo.player.web.dto.LoginRequest;
 import com.agentgierka.mmo.player.web.dto.RegisterRequest;
@@ -44,8 +43,6 @@ class AuthControllerIntegrationTest {
     @MockitoBean
     private AgentWorldStateRepository agentWorldStateRepository;
 
-    @MockitoBean
-    private Brain brain;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 

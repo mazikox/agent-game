@@ -9,7 +9,6 @@ import com.agentgierka.mmo.agent.service.AgentPersistenceService;
 import com.agentgierka.mmo.agent.service.AgentService;
 import com.agentgierka.mmo.player.Player;
 import com.agentgierka.mmo.player.PlayerRepository;
-import com.agentgierka.mmo.ai.port.Brain;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,8 +32,6 @@ class PortalChainIntegrationTest {
     @MockitoBean
     private AgentWorldStateRepository agentWorldStateRepository;
 
-    @MockitoBean
-    private Brain brain;
 
     @Autowired
     private AgentRepository agentRepository;

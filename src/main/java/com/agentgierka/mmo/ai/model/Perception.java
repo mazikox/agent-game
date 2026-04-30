@@ -8,6 +8,7 @@ public record Perception(
     String name,
     Integer x,
     Integer y,
+    Integer level,
     Integer mapWidth,
     Integer mapHeight,
     String locationName,

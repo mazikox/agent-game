@@ -40,11 +40,7 @@ public class AgentService {
     public void assignGoal(UUID agentId, String goal) {
         Agent agent = findAndSync(agentId);
 
-        // Initialize quota from player's tier/maxThinkingSteps, fallback to 1
-        int initialQuota = (agent.getOwner() != null && agent.getOwner().getMaxThinkingSteps() != null) 
-                ? agent.getOwner().getMaxThinkingSteps() : 1;
-        
-        agent.assignGoal(goal, initialQuota);
+        agent.assignGoal(goal);
         agentRepository.save(agent);
 
         worldStateSynchronizer.syncMovementAfterCommit(agent);

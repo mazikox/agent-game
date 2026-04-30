@@ -14,7 +14,6 @@ class GeminiGoalPlannerAdapterTest {
         // given
         String json = """
         {
-          "isSimple": false,
           "tree": {
             "type": "SEQUENCE",
             "children": [
@@ -30,7 +29,6 @@ class GeminiGoalPlannerAdapterTest {
         PlannerResponse response = objectMapper.readValue(json, PlannerResponse.class);
 
         // then
-        assertFalse(response.isSimple());
         assertNotNull(response.getTree());
         assertEquals("SEQUENCE", response.getTree().getType());
         assertEquals(3, response.getTree().getChildren().size());

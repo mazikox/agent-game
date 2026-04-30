@@ -6,7 +6,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import com.agentgierka.mmo.ai.port.Brain;
 import com.agentgierka.mmo.agent.repository.AgentWorldStateRepository;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -18,8 +17,6 @@ public class GoalAssignedListenerLoadTest {
     @Autowired
     private GoalAssignedListener goalAssignedListener;
 
-    @MockitoBean
-    private Brain brain;
 
     @MockitoBean
     private AgentWorldStateRepository agentWorldStateRepository;
