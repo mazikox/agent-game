@@ -103,8 +103,14 @@ public class CombatService {
     )
     @Transactional
     public void executeAction(UUID agentId, CombatActionType actionType) {
-        CombatInstance combat = combatRepository.findByAgentIdAndStatus(agentId, CombatStatus.ONGOING)
-                .orElseThrow(() -> new CombatException("No ongoing combat found for agent"));
+        var combatOpt = combatRepository.findByAgentIdAndStatus(agentId, CombatStatus.ONGOING);
+
+        if (combatOpt.isEmpty()) {
+            log.warn("executeAction called but no ongoing combat for agent {}. Ignoring (possible duplicate request).", agentId);
+            return;
+        }
+
+        CombatInstance combat = combatOpt.get();
 
         Agent agent = agentRepository.findById(combat.getAgentId())
                 .orElseThrow(() -> new CombatException("Agent record missing"));
@@ -207,7 +213,7 @@ public class CombatService {
         agent.gainExperience(creature.getExperienceReward());
         
         // Trigger death ceremony (WebSocket events, loot)
-        spawnService.killCreature(creature.getInstanceId());
+        spawnService.killCreature(creature.getInstanceId(), agent.getId());
         
         String msg = "Combat Victory: " + agent.getName() + " defeated " + creature.getName();
         log.info(msg);

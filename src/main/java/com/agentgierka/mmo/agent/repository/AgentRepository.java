@@ -15,6 +15,7 @@ import java.util.UUID;
  */
 public interface AgentRepository extends JpaRepository<Agent, UUID> {
     List<Agent> findByStatus(AgentStatus status);
+    List<Agent> findByCurrentLocationId(UUID locationId);
 
     @Modifying
     @Query("UPDATE Agent a SET a.x = :x, a.y = :y WHERE a.id = :id")

@@ -109,7 +109,8 @@ class CreatureIntegrationTest {
         CreatureInstance instance = alive.get(0);
 
         // 3. Kill
-        List<String> loot = spawnService.killCreature(instance.getInstanceId());
+        // When
+        List<String> loot = spawnService.killCreature(instance.getInstanceId(), null);
         assertThat(loot).isNotNull();
 
         // 4. Respawn processing (wait for respawn time to expire)

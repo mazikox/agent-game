@@ -3,6 +3,7 @@ package com.agentgierka.mmo.creature.adapter;
 import com.agentgierka.mmo.creature.event.CreatureKilledEvent;
 import com.agentgierka.mmo.creature.event.CreatureSpawnedEvent;
 import com.agentgierka.mmo.creature.model.CreatureInstance;
+import com.agentgierka.mmo.creature.model.CreatureRank;
 import com.agentgierka.mmo.creature.web.dto.CreatureDto;
 import com.agentgierka.mmo.creature.web.mapper.CreatureMapper;
 import org.junit.jupiter.api.Test;
@@ -52,7 +53,7 @@ class CreatureWebSocketAdapterTest {
         UUID locationId = UUID.randomUUID();
         UUID instanceId = UUID.randomUUID();
         UUID templateId = UUID.randomUUID();
-        CreatureKilledEvent event = new CreatureKilledEvent(instanceId, locationId, templateId, java.util.List.of());
+        CreatureKilledEvent event = new CreatureKilledEvent(instanceId, locationId, templateId, null, java.util.List.of(), 0, CreatureRank.NORMAL);
 
         adapter.onCreatureKilled(event);
 

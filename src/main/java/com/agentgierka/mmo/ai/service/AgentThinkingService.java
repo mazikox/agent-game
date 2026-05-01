@@ -72,7 +72,8 @@ public class AgentThinkingService {
                 
                 if (plannedTree.isPresent()) {
                     behaviorTreeRegistry.register(agentId, plannedTree.get());
-                    eventPublisher.publishEvent(new AgentConsoleLogEvent(agent.getId(), "[AI] Utworzono nowy plan Behavior Tree dla: " + agent.getGoal()));
+                    String planMsg = String.format("[AI] Created new Behavior Tree plan for goal: '%s'", agent.getGoal());
+                    eventPublisher.publishEvent(new AgentConsoleLogEvent(agent.getId(), planMsg));
                 } else {
                     log.warn("Failed to plan tree for agent {}", agent.getName());
                     agent.updateStatus(AgentStatus.IDLE, "AI planner failed to create a plan.");
@@ -82,17 +83,36 @@ public class AgentThinkingService {
             }
 
             behaviorTreeExecutor.tick(agent);
-            
+            ensureFollowUpTickIfIdle(agent);
+
             agentRepository.save(agent);
-            
-            if (agent.getStatus() == AgentStatus.MOVING) {
-                worldStateSynchronizer.syncMovementAfterCommit(agent);
-            }
+            worldStateSynchronizer.syncMovementAfterCommit(agent);
 
         } catch (Exception e) {
-            log.error("Error during AI thinking process for agent {}: {}", agent.getName(), e.getMessage(), e);
-            agent.updateStatus(AgentStatus.IDLE, "AI had trouble thinking (" + e.getMessage() + "). Standing by.");
-            agentRepository.save(agent);
+            handleThinkingError(agent, e);
         }
+    }
+
+    private void ensureFollowUpTickIfIdle(Agent agent) {
+        if (shouldFireFollowUpTick(agent)) {
+            log.info("Agent {} is IDLE with active goal after tick — firing immediate follow-up tick.", agent.getName());
+            behaviorTreeExecutor.tick(agent);
+        }
+    }
+
+    private boolean shouldFireFollowUpTick(Agent agent) {
+        return agent.getStatus() == AgentStatus.IDLE
+                && agent.hasActiveGoal()
+                && behaviorTreeRegistry.get(agent.getId()).isPresent();
+    }
+
+    private void handleThinkingError(Agent agent, Exception e) {
+        log.error("Error during AI thinking process for agent {}: {}", agent.getName(), e.getMessage(), e);
+        String errorMsg = Optional.ofNullable(e.getMessage())
+                .map(msg -> msg.length() > 200 ? msg.substring(0, 197) + "..." : msg)
+                .orElse("Unknown error");
+        
+        agent.updateStatus(AgentStatus.IDLE, "AI thinking error: " + errorMsg);
+        agentRepository.save(agent);
     }
 }

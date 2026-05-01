@@ -53,7 +53,7 @@ public class AgentPersistenceService {
                     agent.getX(),
                     agent.getY()
             ));
-            log.info("Agent {} reached destination and mission was completed", agent.getName());
+            log.info("Agent {} reached destination. Emitted arrival event.", agent.getName());
         }
     }
 }

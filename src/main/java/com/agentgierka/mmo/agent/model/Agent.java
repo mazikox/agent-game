@@ -59,6 +59,7 @@ public class Agent {
     @Enumerated(EnumType.STRING)
     private AgentStatus status;
 
+    @Column(length = 1024)
     private String goal;
 
     @ElementCollection(fetch = FetchType.EAGER)
@@ -66,8 +67,10 @@ public class Agent {
     @Builder.Default
     private List<String> memoryLog = new ArrayList<>();
 
+    @Column(length = 1024)
     private String currentTask;
 
+    @Column(name = "current_action_description", length = 2048)
     private String currentActionDescription;
 
     private LocalDateTime lastTeleportAt;
@@ -116,6 +119,10 @@ public class Agent {
 
     public boolean hasActiveGoal() {
         return goal != null && !goal.isBlank();
+    }
+
+    public boolean isEngagedWithAliveTarget(boolean isTargetAlive) {
+        return this.status == AgentStatus.IN_COMBAT && this.targetId != null && isTargetAlive;
     }
 
     public void clearGoal() {

@@ -4,6 +4,8 @@ import com.agentgierka.mmo.agent.model.Agent;
 import com.agentgierka.mmo.combat.service.CombatService;
 import com.agentgierka.mmo.creature.repository.CreatureInstanceRepository;
 import com.agentgierka.mmo.world.PortalRepository;
+import com.agentgierka.mmo.ai.behaviortree.condition.GoalProgress;
+import com.agentgierka.mmo.ai.behaviortree.condition.GoalProgressRegistry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -28,6 +30,7 @@ public class BehaviorTreeExecutor {
     private final PortalRepository portalRepository;
     private final CombatService combatService;
     private final ApplicationEventPublisher eventPublisher;
+    private final GoalProgressRegistry goalProgressRegistry;
 
     @Value("${game.behavior-tree.max-ticks:100}")
     private int maxTicks;
@@ -51,8 +54,9 @@ public class BehaviorTreeExecutor {
             return;
         }
 
+        GoalProgress progress = goalProgressRegistry.getOrCreate(agent.getId());
         BehaviorContext context = new BehaviorContext(
-                agent, creatureRepository, portalRepository, combatService, eventPublisher
+                agent, creatureRepository, portalRepository, combatService, eventPublisher, progress
         );
 
         try {
@@ -74,6 +78,7 @@ public class BehaviorTreeExecutor {
 
     private void cleanUp(UUID agentId) {
         registry.remove(agentId);
+        goalProgressRegistry.remove(agentId);
         tickCounters.invalidate(agentId);
     }
 }

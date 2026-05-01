@@ -25,7 +25,7 @@ public class GoalAssignedListener {
     private final AgentThinkingService agentThinkingService;
     private final AgentService agentService;
 
-    @Async
+    @Async("taskExecutor")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void onGoalAssigned(GoalAssignedEvent event) {

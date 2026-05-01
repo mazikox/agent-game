@@ -9,7 +9,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.util.function.Predicate;
+import com.agentgierka.mmo.ai.behaviortree.condition.GoalCondition;
+import com.agentgierka.mmo.ai.behaviortree.condition.GoalProgress;
+import com.agentgierka.mmo.agent.model.Agent;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.*;
@@ -22,8 +24,11 @@ class RepeatUntilNodeTest {
     private BehaviorNode child;
 
     @Mock
-    private Predicate<BehaviorContext> condition;
-
+    private GoalCondition condition;
+    @Mock
+    private GoalProgress progress;
+    @Mock
+    private Agent agent;
     @Mock
     private BehaviorContext context;
 
@@ -31,7 +36,9 @@ class RepeatUntilNodeTest {
     @DisplayName("Should return SUCCESS without ticking child if condition is met")
     void shouldReturnSuccessIfConditionMet() {
         RepeatUntilNode node = new RepeatUntilNode(condition, child);
-        when(condition.test(context)).thenReturn(true);
+        when(context.goalProgress()).thenReturn(progress);
+        when(context.agent()).thenReturn(agent);
+        when(condition.isSatisfied(progress, agent)).thenReturn(true);
 
         NodeStatus result = node.tick(context);
 
@@ -43,7 +50,9 @@ class RepeatUntilNodeTest {
     @DisplayName("Should return RUNNING if child succeeds but condition is not met")
     void shouldReturnRunningIfChildSucceeds() {
         RepeatUntilNode node = new RepeatUntilNode(condition, child);
-        when(condition.test(context)).thenReturn(false);
+        when(context.goalProgress()).thenReturn(progress);
+        when(context.agent()).thenReturn(agent);
+        when(condition.isSatisfied(progress, agent)).thenReturn(false);
         when(child.tick(context)).thenReturn(NodeStatus.SUCCESS);
 
         NodeStatus result = node.tick(context);
@@ -53,15 +62,17 @@ class RepeatUntilNodeTest {
     }
 
     @Test
-    @DisplayName("Should return FAILURE immediately if child fails")
-    void shouldReturnFailureIfChildFails() {
+    @DisplayName("Should return RUNNING (retry) if child fails (before max retries)")
+    void shouldReturnRunningIfChildFails() {
         RepeatUntilNode node = new RepeatUntilNode(condition, child);
-        when(condition.test(context)).thenReturn(false);
+        when(context.goalProgress()).thenReturn(progress);
+        when(context.agent()).thenReturn(agent);
+        when(condition.isSatisfied(progress, agent)).thenReturn(false);
         when(child.tick(context)).thenReturn(NodeStatus.FAILURE);
 
         NodeStatus result = node.tick(context);
 
-        assertEquals(NodeStatus.FAILURE, result);
+        assertEquals(NodeStatus.RUNNING, result, "Should return RUNNING for retry");
         verify(child).tick(context);
     }
 
@@ -69,7 +80,9 @@ class RepeatUntilNodeTest {
     @DisplayName("Should return RUNNING if child is running")
     void shouldReturnRunningIfChildIsRunning() {
         RepeatUntilNode node = new RepeatUntilNode(condition, child);
-        when(condition.test(context)).thenReturn(false);
+        when(context.goalProgress()).thenReturn(progress);
+        when(context.agent()).thenReturn(agent);
+        when(condition.isSatisfied(progress, agent)).thenReturn(false);
         when(child.tick(context)).thenReturn(NodeStatus.RUNNING);
 
         NodeStatus result = node.tick(context);

@@ -129,7 +129,7 @@ class SpawnServiceTest {
         when(creatureInstanceRepository.findById(instanceId)).thenReturn(instance);
         when(lootService.rollLoot(templateId, locationId)).thenReturn(expectedDrops);
 
-        List<String> actualDrops = spawnService.killCreature(instanceId);
+        List<String> actualDrops = spawnService.killCreature(instanceId, UUID.randomUUID());
 
         verify(creatureInstanceRepository).save(argThat(i -> i.getState() == CreatureState.DEAD));
         verify(eventPublisher).publishEvent(any(com.agentgierka.mmo.creature.event.CreatureKilledEvent.class));

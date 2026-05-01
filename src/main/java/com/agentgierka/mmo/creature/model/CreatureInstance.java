@@ -79,6 +79,10 @@ public class CreatureInstance implements Serializable {
         return state == CreatureState.DEAD;
     }
 
+    public boolean isAlive() {
+        return state == CreatureState.ALIVE || state == CreatureState.IN_COMBAT;
+    }
+
     public void takeDamage(int amount) {
         if (state == CreatureState.DEAD) {
             return;

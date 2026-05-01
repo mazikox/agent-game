@@ -16,6 +16,9 @@ import com.agentgierka.mmo.ai.behaviortree.leaf.IdleAction;
 import com.agentgierka.mmo.ai.model.Direction;
 import com.agentgierka.mmo.ai.model.Perception;
 import com.agentgierka.mmo.ai.port.GoalPlanner;
+import com.agentgierka.mmo.combat.service.CombatService;
+import com.agentgierka.mmo.world.PortalRepository;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.AllArgsConstructor;
@@ -38,10 +41,16 @@ import java.util.stream.Collectors;
 public class GeminiGoalPlannerAdapter implements GoalPlanner {
 
     private final ChatModel chatModel;
+    private final PortalRepository portalRepository;
+    private final CombatService combatService;
+    private final GoalConditionFactory goalConditionFactory;
     private final ObjectMapper objectMapper;
 
-    public GeminiGoalPlannerAdapter(ChatModel chatModel) {
+    public GeminiGoalPlannerAdapter(ChatModel chatModel, PortalRepository portalRepository, CombatService combatService, GoalConditionFactory goalConditionFactory) {
         this.chatModel = chatModel;
+        this.portalRepository = portalRepository;
+        this.combatService = combatService;
+        this.goalConditionFactory = goalConditionFactory;
         this.objectMapper = new ObjectMapper();
     }
 
@@ -54,11 +63,14 @@ public class GeminiGoalPlannerAdapter implements GoalPlanner {
                     
                     CRITICAL RULE:
                     - You MUST ALWAYS return a Behavior Tree. Even if the goal is a SINGLE ATOMIC action (e.g., "go left", "move down 5", "wait", "stand still"), return a single-node tree.
+                    - ALWAYS use MOVE_TO_TARGET between FIND_NEAREST_CREATURE and ATTACK_TARGET. An agent cannot attack from a distance!
 
                     Behavior Tree Node Types available:
                     1. SEQUENCE: Executes children in order.
                     2. SELECTOR: Executes children until first success.
-                    3. REPEAT_UNTIL: Repeats its single child until a condition is met.
+                    3. REPEAT_UNTIL: Repeats exactly ONE child node (must be a SEQUENCE or leaf) until condition is met. 
+                       Always wrap multiple steps inside a SEQUENCE and pass that as the single child.
+                       Example: REPEAT_UNTIL -> SEQUENCE -> [FIND_NEAREST_CREATURE, MOVE_TO_TARGET, ATTACK_TARGET]
                     4. FIND_NEAREST_CREATURE: Finds closest alive monster (Leaf).
                     5. MOVE_TO_TARGET: Moves towards the targeted creature/portal (Leaf).
                     6. ATTACK_TARGET: Attacks the creature (Leaf). Wait mode for manual combat.
@@ -69,7 +81,13 @@ public class GeminiGoalPlannerAdapter implements GoalPlanner {
                     11. IDLE: Stand still / do nothing. No extra fields (Leaf).
 
                     Conditions available for REPEAT_UNTIL:
-                    - "level >= X": X is the target level.
+                    - "killCount >= X": Repeat until X creatures are killed.
+                    - "level >= X": Repeat until agent reaches level X.
+                    - "expGained >= X": Repeat until X experience points are gained.
+                    - "hpPercent <= X": Stop when HP drops below X percent.
+                    - "locationReached == 'Name'": Stop when reaching location with name 'Name'.
+                    - "AND(cond1, cond2)": Both conditions must be true.
+                    - "OR(cond1, cond2)": At least one condition must be true.
 
                     Output MUST be JSON conforming to this structure:
                     {
@@ -81,7 +99,7 @@ public class GeminiGoalPlannerAdapter implements GoalPlanner {
                         "steps": number (only for MOVE_DIRECTION),
                         "rawX": number (only for MOVE_TO_POSITION),
                         "rawY": number (only for MOVE_TO_POSITION),
-                        "children": [ recursive tree nodes ]
+                        "children": [ recursive tree nodes ] (MUST ALWAYS be an array, even for single child)
                       }
                     }
 
@@ -124,20 +142,15 @@ public class GeminiGoalPlannerAdapter implements GoalPlanner {
         return switch (dto.getType().toUpperCase()) {
             case "SEQUENCE" -> new SequenceNode(buildChildren(dto.getChildren(), depth + 1));
             case "SELECTOR" -> new SelectorNode(buildChildren(dto.getChildren(), depth + 1));
-            case "REPEAT_UNTIL" -> new RepeatUntilNode(
-                    ctx -> {
-                        if (dto.getCondition() != null && dto.getCondition().startsWith("level >= ")) {
-                            try {
-                                int targetLvl = Integer.parseInt(dto.getCondition().replace("level >= ", "").trim());
-                                return ctx.agent().getStats().getLevel() >= targetLvl;
-                            } catch (NumberFormatException e) {
-                                return true; // fallback to stop loop
-                            }
-                        }
-                        return false;
-                    },
-                    buildNode(dto.getChild(), depth + 1)
-            );
+            case "REPEAT_UNTIL" -> {
+                if (dto.getChildren() != null && dto.getChildren().size() > 1) {
+                    throw new IllegalArgumentException("REPEAT_UNTIL node can only have exactly ONE child. Gemini returned multiple.");
+                }
+                yield new RepeatUntilNode(
+                        goalConditionFactory.parse(dto.getCondition()),
+                        buildNode(dto.getChild(), depth + 1)
+                );
+            }
             case "FIND_NEAREST_CREATURE" -> new FindNearestCreatureAction();
             case "MOVE_TO_TARGET" -> new MoveToTargetAction();
             case "ATTACK_TARGET" -> new AttackTargetAction();
@@ -184,6 +197,7 @@ class BehaviorTreeDto {
     private Integer steps;
     private Integer rawX;
     private Integer rawY;
+    @JsonFormat(with = JsonFormat.Feature.ACCEPT_SINGLE_VALUE_AS_ARRAY)
     private List<BehaviorTreeDto> children;
 
     public BehaviorTreeDto getChild() {

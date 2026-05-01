@@ -35,6 +35,7 @@ public class SpawnService {
         activePoints.forEach(this::spawnAtPoint);
     }
 
+    @Transactional
     public void processRespawns() {
         List<CreatureInstance> deadCreatures = creatureInstanceRepository.findAllDead();
         Instant now = Instant.now();
@@ -79,13 +80,13 @@ public class SpawnService {
     }
 
     @Transactional
-    public List<String> killCreature(UUID instanceId) {
+    public List<String> killCreature(UUID instanceId, UUID killerId) {
         CreatureInstance instance = creatureInstanceRepository.findById(instanceId);
         if (instance == null) {
             return List.of();
         }
 
-        log.info("Creature {} killed.", instanceId);
+        log.info("Creature {} killed by {}.", instanceId, killerId);
         instance.kill();
         creatureInstanceRepository.save(instance);
 
@@ -95,7 +96,10 @@ public class SpawnService {
                 instance.getInstanceId(),
                 instance.getLocationId(),
                 instance.getTemplateId(),
-                drops
+                killerId,
+                drops,
+                instance.getExperienceReward(),
+                instance.getRank()
         ));
 
         return drops;
