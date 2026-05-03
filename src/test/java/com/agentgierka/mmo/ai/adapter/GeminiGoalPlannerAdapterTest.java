@@ -1,5 +1,6 @@
 package com.agentgierka.mmo.ai.adapter;
 
+import com.agentgierka.mmo.ai.adapter.dto.PlannerResponse;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 

@@ -23,6 +23,8 @@ import java.util.List;
 import java.util.UUID;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import com.agentgierka.mmo.ai.behaviortree.NodeStatus;
+import com.agentgierka.mmo.ai.behaviortree.condition.GoalProgressRegistry;
 
 @Service
 @Slf4j
@@ -37,6 +39,7 @@ public class AgentThinkingService {
     private final GoalPlanner goalPlanner;
     private final BehaviorTreeRegistry behaviorTreeRegistry;
     private final BehaviorTreeExecutor behaviorTreeExecutor;
+    private final GoalProgressRegistry goalProgressRegistry;
 
     @Transactional
     public void processThinking(UUID agentId) {
@@ -49,47 +52,80 @@ public class AgentThinkingService {
         }
 
         if (!agent.hasActiveGoal()) {
+            abortCurrentPlan(agentId);
             return;
         }
 
-        List<String> portals = portalRepository.findAllBySourceLocationId(agent.getCurrentLocation().getId())
-                .stream()
-                .map(p -> String.format("Portal to %s at (%d, %d)",
-                        p.getTargetLocation().getName(), p.getSourceX(), p.getSourceY()))
-                .collect(Collectors.toList());
-
-        List<String> creatures = creatureInstanceRepository.findAllByLocationId(agent.getCurrentLocation().getId())
-                .stream()
-                .filter(c -> c.getState() != CreatureState.DEAD)
-                .map(c -> String.format("%s at (%d, %d) HP:%d/%d [State: %s]",
-                        c.getName(), c.getX(), c.getY(), c.getCurrentHp(), c.getMaxHp(), c.getState()))
-                .collect(Collectors.toList());
+        // Fetch perception (portals and creatures)
+        List<String> portals = fetchPortals(agent);
+        List<String> creatures = fetchCreatures(agent);
 
         try {
             if (behaviorTreeRegistry.get(agentId).isEmpty()) {
-                log.info("Agent {} is planning goal: '{}'", agent.getName(), agent.getGoal());
-                Optional<BehaviorNode> plannedTree = goalPlanner.planGoal(agent.getGoal(), agent.preparePerception(portals, creatures));
-                
-                if (plannedTree.isPresent()) {
-                    behaviorTreeRegistry.register(agentId, plannedTree.get());
-                    String planMsg = String.format("[AI] Created new Behavior Tree plan for goal: '%s'", agent.getGoal());
-                    eventPublisher.publishEvent(new AgentConsoleLogEvent(agent.getId(), planMsg));
-                } else {
-                    log.warn("Failed to plan tree for agent {}", agent.getName());
-                    agent.updateStatus(AgentStatus.IDLE, "AI planner failed to create a plan.");
-                    agentRepository.save(agent);
-                    return;
-                }
+                planNewGoal(agent, portals, creatures);
             }
 
-            behaviorTreeExecutor.tick(agent);
-            ensureFollowUpTickIfIdle(agent);
+            NodeStatus status = behaviorTreeExecutor.tick(agent);
+            
+            if (status == NodeStatus.SUCCESS || status == NodeStatus.FAILURE) {
+                handleGoalCompletion(agent, status);
+            } else {
+                ensureFollowUpTickIfIdle(agent);
+            }
 
             agentRepository.save(agent);
             worldStateSynchronizer.syncMovementAfterCommit(agent);
 
         } catch (Exception e) {
             handleThinkingError(agent, e);
+        }
+    }
+
+    public void abortCurrentPlan(UUID agentId) {
+        log.info("Aborting current plan and clearing progress for agent {}", agentId);
+        behaviorTreeRegistry.remove(agentId);
+        goalProgressRegistry.remove(agentId);
+    }
+
+    private void handleGoalCompletion(Agent agent, NodeStatus status) {
+        log.info("Goal '{}' finished with status {} for agent {}. Cleaning up...", 
+                 agent.getGoal(), status, agent.getName());
+        abortCurrentPlan(agent.getId());
+        agent.clearGoal();
+    }
+
+    private List<String> fetchPortals(Agent agent) {
+        return portalRepository.findAllBySourceLocationId(agent.getCurrentLocation().getId())
+                .stream()
+                .map(p -> String.format("Portal to %s at (%d, %d)",
+                        p.getTargetLocation().getName(), p.getSourceX(), p.getSourceY()))
+                .collect(Collectors.toList());
+    }
+
+    private List<String> fetchCreatures(Agent agent) {
+        return creatureInstanceRepository.findAllByLocationId(agent.getCurrentLocation().getId())
+                .stream()
+                .filter(c -> c.getState() != CreatureState.DEAD)
+                .map(c -> String.format("%s at (%d, %d) HP:%d/%d [State: %s]",
+                        c.getName(), c.getX(), c.getY(), c.getCurrentHp(), c.getMaxHp(), c.getState()))
+                .collect(Collectors.toList());
+    }
+
+    private void planNewGoal(Agent agent, List<String> portals, List<String> creatures) {
+        log.info("Agent {} is planning goal: '{}'", agent.getName(), agent.getGoal());
+        Optional<BehaviorNode> plannedTree = goalPlanner.planGoal(agent.getGoal(), agent.preparePerception(portals, creatures));
+        
+        if (plannedTree.isPresent()) {
+            BehaviorNode node = plannedTree.get();
+            behaviorTreeRegistry.register(agent.getId(), node);
+            agent.logAiDecision(node.describe());
+            agentRepository.save(agent);
+            
+            String planMsg = String.format("[AI] Created new Behavior Tree plan for goal: '%s'", agent.getGoal());
+            eventPublisher.publishEvent(new AgentConsoleLogEvent(agent.getId(), planMsg));
+        } else {
+            log.warn("Failed to plan tree for agent {}", agent.getName());
+            agent.updateStatus(AgentStatus.IDLE, "AI planner failed to create a plan.");
         }
     }
 

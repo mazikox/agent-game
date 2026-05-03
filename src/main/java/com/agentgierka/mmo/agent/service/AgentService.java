@@ -86,6 +86,8 @@ public class AgentService {
             validateBounds(agent, targetX, targetY);
         }
 
+        // Manual movement overrides AI goals
+        agent.cancelCurrentGoal();
         agent.startMovement(targetX, targetY, "Preparing to move to (" + targetX + ", " + targetY + ")");
         Agent savedAgent = agentRepository.save(agent);
 

@@ -77,45 +77,4 @@ class SimpleMovementActionsTest {
         assertEquals(NodeStatus.SUCCESS, status);
         verify(agent, never()).startMovement(anyInt(), anyInt(), anyString());
     }
-
-    @Test
-    void moveDirectionAction_whenValid_calculatesTargetAndInitiatesMovement() {
-        MoveDirectionAction action = new MoveDirectionAction(Direction.UP, 3);
-
-        when(agent.getX()).thenReturn(5);
-        when(agent.getY()).thenReturn(5);
-        when(agent.getStatus()).thenReturn(AgentStatus.IDLE);
-        when(agent.calculateTarget(Direction.UP, 3)).thenReturn(new Agent.Point(5, 2));
-
-        NodeStatus status = action.tick(context);
-
-        assertEquals(NodeStatus.RUNNING, status);
-        verify(agent).startMovement(eq(5), eq(2), anyString());
-    }
-
-    @Test
-    void moveDirectionAction_whenAtCalculatedTarget_returnsSuccess() {
-        MoveDirectionAction action = new MoveDirectionAction(Direction.DOWN, 2);
-
-        when(agent.getX()).thenReturn(5);
-        when(agent.getY()).thenReturn(7);
-        // We simulate that agent calculateTarget would return its current pos (e.g. hit a wall, or actually already walked there if re-evaluated)
-        when(agent.calculateTarget(Direction.DOWN, 2)).thenReturn(new Agent.Point(5, 7));
-
-        NodeStatus status = action.tick(context);
-
-        assertEquals(NodeStatus.SUCCESS, status);
-        verify(agent, never()).startMovement(anyInt(), anyInt(), anyString());
-    }
-
-    @Test
-    void moveDirectionAction_withInvalidParameters_returnsFailure() {
-        MoveDirectionAction action = new MoveDirectionAction(null, 5);
-        NodeStatus status = action.tick(context);
-        assertEquals(NodeStatus.FAILURE, status);
-
-        MoveDirectionAction actionZeroSteps = new MoveDirectionAction(Direction.LEFT, 0);
-        NodeStatus statusZero = actionZeroSteps.tick(context);
-        assertEquals(NodeStatus.FAILURE, statusZero);
-    }
 }

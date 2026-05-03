@@ -29,8 +29,8 @@ public class GoalAssignedListener {
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void onGoalAssigned(GoalAssignedEvent event) {
-        var agent = agentService.findById(event.agentId());
-        log.info("Goal assigned event received for agent {}. Starting AI thinking...", agent.getName());
+        log.info("Goal assigned event received for agent {}. Aborting old plan and starting new AI thinking...", event.agentId());
+        agentThinkingService.abortCurrentPlan(event.agentId());
         agentThinkingService.processThinking(event.agentId());
     }
 }

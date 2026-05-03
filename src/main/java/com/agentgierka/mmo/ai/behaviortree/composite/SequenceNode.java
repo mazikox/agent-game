@@ -12,11 +12,14 @@ public class SequenceNode implements BehaviorNode {
     private int currentIndex = 0;
 
     public SequenceNode(List<BehaviorNode> children) {
-        this.children = children;
+        this.children = children != null ? 
+            children.stream().filter(java.util.Objects::nonNull).collect(Collectors.toList()) : 
+            List.of();
     }
 
     @Override
     public NodeStatus tick(BehaviorContext context) {
+        if (children.isEmpty()) return NodeStatus.SUCCESS;
         while (currentIndex < children.size()) {
             NodeStatus status = children.get(currentIndex).tick(context);
             if (status != NodeStatus.SUCCESS) {
@@ -31,15 +34,13 @@ public class SequenceNode implements BehaviorNode {
     @Override
     public void reset() {
         currentIndex = 0;
-        for (BehaviorNode child : children) {
-            child.reset();
-        }
+        children.forEach(BehaviorNode::reset);
     }
 
     @Override
     public String describe() {
         return "Sequence[" + children.stream()
-                .map(BehaviorNode::describe)
+                .map(n -> n != null ? n.describe() : "null")
                 .collect(Collectors.joining(", ")) + "]";
     }
 }

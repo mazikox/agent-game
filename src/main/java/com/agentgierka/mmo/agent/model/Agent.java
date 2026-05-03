@@ -98,7 +98,7 @@ public class Agent {
         if (this.memoryLog == null) {
             this.memoryLog = new ArrayList<>();
         }
-        this.memoryLog.add(0, "[CEL] Gracz: " + newGoal);
+        this.memoryLog.add(0, "[GOAL] Player: " + newGoal);
         while (this.memoryLog.size() > 10) {
             this.memoryLog.remove(this.memoryLog.size() - 1);
         }
@@ -107,6 +107,16 @@ public class Agent {
         this.targetX = null;
         this.targetY = null;
         this.status = AgentStatus.IDLE;
+    }
+
+    public void logAiDecision(String decision) {
+        if (this.memoryLog == null) {
+            this.memoryLog = new ArrayList<>();
+        }
+        this.memoryLog.add(0, "[AI] Decision: " + decision);
+        while (this.memoryLog.size() > 10) {
+            this.memoryLog.remove(this.memoryLog.size() - 1);
+        }
     }
 
     public void cancelCurrentGoal() {

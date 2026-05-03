@@ -39,11 +39,11 @@ public class BehaviorTreeExecutor {
             .expireAfterWrite(2, TimeUnit.HOURS)
             .build();
 
-    public void tick(Agent agent) {
+    public NodeStatus tick(Agent agent) {
         BehaviorNode tree = registry.get(agent.getId()).orElse(null);
         if (tree == null) {
             log.warn("No active behavior tree found for agent {}", agent.getName());
-            return;
+            return NodeStatus.FAILURE;
         }
 
         int currentTicks = tickCounters.asMap().merge(agent.getId(), 1, Integer::sum);
@@ -51,7 +51,7 @@ public class BehaviorTreeExecutor {
             log.warn("Agent {} exceeded max behavior tree ticks ({}). Aborting.", agent.getName(), maxTicks);
             cleanUp(agent.getId());
             agent.clearGoal();
-            return;
+            return NodeStatus.FAILURE;
         }
 
         GoalProgress progress = goalProgressRegistry.getOrCreate(agent.getId());
@@ -68,11 +68,13 @@ public class BehaviorTreeExecutor {
                 cleanUp(agent.getId());
                 agent.clearGoal();
             }
+            return status;
 
         } catch (Exception e) {
             log.error("Unexpected error during Behavior Tree execution for agent {}: ", agent.getName(), e);
             cleanUp(agent.getId());
             agent.clearGoal();
+            return NodeStatus.FAILURE;
         }
     }
 

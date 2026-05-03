@@ -38,7 +38,15 @@ public class EnterPortalAction implements BehaviorNode {
             return NodeStatus.SUCCESS;
         }
 
-        return NodeStatus.FAILURE;
+        // Agent is not at portal yet - move towards it
+        if (agent.getStatus() == com.agentgierka.mmo.agent.model.AgentStatus.MOVING 
+                && Integer.valueOf(portalX).equals(agent.getTargetX()) 
+                && Integer.valueOf(portalY).equals(agent.getTargetY())) {
+            return NodeStatus.RUNNING;
+        }
+
+        agent.startMovement(portalX, portalY, "Moving to portal to " + p.getTargetLocation().getName());
+        return NodeStatus.RUNNING;
     }
 
     @Override

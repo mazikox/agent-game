@@ -12,11 +12,14 @@ public class SelectorNode implements BehaviorNode {
     private int currentIndex = 0;
 
     public SelectorNode(List<BehaviorNode> children) {
-        this.children = children;
+        this.children = children != null ? 
+            children.stream().filter(java.util.Objects::nonNull).collect(Collectors.toList()) : 
+            List.of();
     }
 
     @Override
     public NodeStatus tick(BehaviorContext context) {
+        if (children.isEmpty()) return NodeStatus.FAILURE;
         while (currentIndex < children.size()) {
             NodeStatus status = children.get(currentIndex).tick(context);
             if (status == NodeStatus.SUCCESS) {
@@ -35,15 +38,13 @@ public class SelectorNode implements BehaviorNode {
     @Override
     public void reset() {
         currentIndex = 0;
-        for (BehaviorNode child : children) {
-            child.reset();
-        }
+        children.forEach(BehaviorNode::reset);
     }
 
     @Override
     public String describe() {
         return "Selector[" + children.stream()
-                .map(BehaviorNode::describe)
+                .map(n -> n != null ? n.describe() : "null")
                 .collect(Collectors.joining(", ")) + "]";
     }
 }
