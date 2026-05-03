@@ -24,7 +24,7 @@ public class FindNearestCreatureAction implements BehaviorNode {
                 ? context.creatureRepository().findById(context.agent().getTargetId()) 
                 : null;
         
-        if (context.agent().isEngagedWithAliveTarget(currentTarget != null && currentTarget.isAlive())) {
+        if (context.agent().isFighting() && currentTarget != null && currentTarget.isAlive()) {
             return NodeStatus.SUCCESS;
         }
 

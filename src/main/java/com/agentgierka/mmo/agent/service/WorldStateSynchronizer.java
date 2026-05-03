@@ -1,6 +1,6 @@
 package com.agentgierka.mmo.agent.service;
 
-import com.agentgierka.mmo.agent.event.AgentArrivedEvent;
+import com.agentgierka.mmo.agent.event.AgentArrivedAtWaypointEvent;
 import com.agentgierka.mmo.agent.event.AgentStateUpdatedEvent;
 import com.agentgierka.mmo.agent.model.Agent;
 import com.agentgierka.mmo.agent.model.AgentWorldState;
@@ -48,7 +48,7 @@ public class WorldStateSynchronizer {
     public void clearStateAndPublishArrival(UUID agentId, String agentName, Location location, Integer x, Integer y, MovementType type) {
         executeAfterCommit(() -> {
             agentWorldStateRepository.delete(agentId);
-            eventPublisher.publishEvent(new AgentArrivedEvent(agentId, agentName, location, x, y, type));
+            eventPublisher.publishEvent(new AgentArrivedAtWaypointEvent(agentId, agentName, location, x, y, type));
         });
     }
 

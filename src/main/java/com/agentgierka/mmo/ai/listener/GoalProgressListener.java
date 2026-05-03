@@ -2,12 +2,13 @@ package com.agentgierka.mmo.ai.listener;
 
 import com.agentgierka.mmo.ai.behaviortree.condition.GoalProgress;
 import com.agentgierka.mmo.ai.behaviortree.condition.GoalProgressRegistry;
-import com.agentgierka.mmo.agent.event.AgentArrivedEvent;
+import com.agentgierka.mmo.agent.event.AgentArrivedAtWaypointEvent;
 import com.agentgierka.mmo.creature.event.CreatureKilledEvent;
 import com.agentgierka.mmo.creature.model.CreatureRank;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 /**
@@ -15,6 +16,7 @@ import org.springframework.stereotype.Component;
  * It connects the world events with the AI goal tracking state.
  */
 @Component
+@Order(1)
 @RequiredArgsConstructor
 @Slf4j
 public class GoalProgressListener {
@@ -50,7 +52,7 @@ public class GoalProgressListener {
     }
 
     @EventListener
-    public void onAgentArrived(AgentArrivedEvent event) {
+    public void onAgentArrived(AgentArrivedAtWaypointEvent event) {
         GoalProgress progress = goalProgressRegistry.getIfExists(event.agentId());
         if (progress != null && event.location() != null) {
             progress.addLocationVisited(event.location().getName());

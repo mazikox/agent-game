@@ -6,9 +6,10 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class KillCountCondition implements GoalCondition {
     private final int targetKills;
+    private final ComparisonOperator operator;
 
     @Override
     public boolean isSatisfied(GoalProgress progress, Agent agent) {
-        return progress.getKillCount() >= targetKills;
+        return operator.compare(progress.getKillCount(), targetKills);
     }
 }

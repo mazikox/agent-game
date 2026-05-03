@@ -131,8 +131,8 @@ public class Agent {
         return goal != null && !goal.isBlank();
     }
 
-    public boolean isEngagedWithAliveTarget(boolean isTargetAlive) {
-        return this.status == AgentStatus.IN_COMBAT && this.targetId != null && isTargetAlive;
+    public boolean isFighting() {
+        return this.status == AgentStatus.IN_COMBAT && this.targetId != null;
     }
 
     public void clearGoal() {

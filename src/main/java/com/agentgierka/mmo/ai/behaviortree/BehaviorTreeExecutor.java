@@ -16,9 +16,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @Service
 @Slf4j
@@ -35,9 +33,7 @@ public class BehaviorTreeExecutor {
     @Value("${game.behavior-tree.max-ticks:100}")
     private int maxTicks;
 
-    private final Cache<UUID, Integer> tickCounters = Caffeine.newBuilder()
-            .expireAfterWrite(2, TimeUnit.HOURS)
-            .build();
+    private final Map<UUID, AtomicInteger> tickCounters = new ConcurrentHashMap<>();
 
     public NodeStatus tick(Agent agent) {
         BehaviorNode tree = registry.get(agent.getId()).orElse(null);
@@ -46,7 +42,7 @@ public class BehaviorTreeExecutor {
             return NodeStatus.FAILURE;
         }
 
-        int currentTicks = tickCounters.asMap().merge(agent.getId(), 1, Integer::sum);
+        int currentTicks = tickCounters.computeIfAbsent(agent.getId(), k -> new AtomicInteger(0)).incrementAndGet();
         if (currentTicks > maxTicks) {
             log.warn("Agent {} exceeded max behavior tree ticks ({}). Aborting.", agent.getName(), maxTicks);
             cleanUp(agent.getId());
@@ -81,6 +77,6 @@ public class BehaviorTreeExecutor {
     private void cleanUp(UUID agentId) {
         registry.remove(agentId);
         goalProgressRegistry.remove(agentId);
-        tickCounters.invalidate(agentId);
+        tickCounters.remove(agentId);
     }
 }

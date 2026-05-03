@@ -1,6 +1,7 @@
 package com.agentgierka.mmo.agent.service;
 
-import com.agentgierka.mmo.agent.event.AgentGoalCompletedEvent;
+import com.agentgierka.mmo.agent.event.AgentArrivedAtWaypointEvent;
+import com.agentgierka.mmo.agent.model.MovementType;
 import com.agentgierka.mmo.agent.exception.AgentNotFoundException;
 import com.agentgierka.mmo.agent.model.Agent;
 import com.agentgierka.mmo.agent.model.AgentWorldState;
@@ -45,13 +46,14 @@ public class AgentPersistenceService {
             
             agentService.teleportTo(agent.getId(), p.getTargetLocation(), p.getTargetX(), p.getTargetY());
         } else {
-            // No trigger found, publish the final goal completion event
-            eventPublisher.publishEvent(new AgentGoalCompletedEvent(
+            // No trigger found, publish the arrival event
+            eventPublisher.publishEvent(new AgentArrivedAtWaypointEvent(
                     agent.getId(),
                     agent.getName(),
                     agent.getCurrentLocation(),
                     agent.getX(),
-                    agent.getY()
+                    agent.getY(),
+                    MovementType.NORMAL
             ));
             log.info("Agent {} reached destination. Emitted arrival event.", agent.getName());
         }

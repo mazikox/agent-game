@@ -81,7 +81,7 @@ class PortalIntegrationTest {
                 .status(AgentStatus.MOVING)
                 .build();
 
-        // When: Finalizing movement (this should publish AgentArrivedEvent)
+        // When: Finalizing movement (this should publish AgentArrivedAtWaypointEvent)
         agentPersistenceService.finalizeMovement(arrivalState);
 
         // Then: The agent should be teleported and state updated in Postgres

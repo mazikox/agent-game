@@ -36,12 +36,18 @@ public class BehaviorTreeCompiler {
             case "SEQUENCE" -> new SequenceNode(buildChildren(dto.getChildren(), perception, depth + 1));
             case "SELECTOR" -> new SelectorNode(buildChildren(dto.getChildren(), perception, depth + 1));
             case "REPEAT_UNTIL" -> {
+                BehaviorTreeDto childDto = dto.getChild();
+                if (childDto == null && dto.getChildren() != null && !dto.getChildren().isEmpty()) {
+                    childDto = dto.getChildren().get(0);
+                }
+
                 if (dto.getChildren() != null && dto.getChildren().size() > 1) {
                     throw new IllegalArgumentException("REPEAT_UNTIL node can only have exactly ONE child.");
                 }
+
                 yield new RepeatUntilNode(
                         goalConditionFactory.parse(dto.getCondition()),
-                        buildNode(dto.getChild(), perception, depth + 1)
+                        buildNode(childDto, perception, depth + 1)
                 );
             }
             case "FIND_NEAREST_CREATURE" -> new FindNearestCreatureAction();
@@ -56,8 +62,8 @@ public class BehaviorTreeCompiler {
             );
             case "IDLE" -> new IdleAction();
             default -> {
-                log.warn("Unknown Behavior Tree node type received from AI: '{}'. Falling back to IDLE.", dto.getType());
-                yield new IdleAction();
+                log.error("Unknown Behavior Tree node type received from AI: '{}'. Failing compilation.", dto.getType());
+                throw new IllegalArgumentException("Unknown node type: " + dto.getType());
             }
         };
     }
@@ -74,7 +80,8 @@ public class BehaviorTreeCompiler {
         int steps = dto.getSteps() != null ? dto.getSteps() : 0;
         
         if (dir == null || steps <= 0) {
-            return new IdleAction();
+            log.error("AI provided invalid MOVE_DIRECTION parameters: dir={}, steps={}", dir, steps);
+            throw new IllegalArgumentException("Invalid MOVE_DIRECTION parameters");
         }
 
         int agentX = perception.x() != null ? perception.x() : 0;

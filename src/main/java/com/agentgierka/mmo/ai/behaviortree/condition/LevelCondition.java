@@ -6,9 +6,10 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class LevelCondition implements GoalCondition {
     private final int targetLevel;
+    private final ComparisonOperator operator;
 
     @Override
     public boolean isSatisfied(GoalProgress progress, Agent agent) {
-        return agent.getStats() != null && agent.getStats().getLevel() >= targetLevel;
+        return agent.getStats() != null && operator.compare(agent.getStats().getLevel(), targetLevel);
     }
 }

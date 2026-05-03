@@ -1,7 +1,6 @@
 package com.agentgierka.mmo.agent.web;
 
-import com.agentgierka.mmo.agent.event.AgentGoalCompletedEvent;
-import com.agentgierka.mmo.agent.event.AgentArrivedEvent;
+import com.agentgierka.mmo.agent.event.AgentArrivedAtWaypointEvent;
 import com.agentgierka.mmo.agent.event.AgentStateUpdatedEvent;
 import com.agentgierka.mmo.agent.event.AgentConsoleLogEvent;
 import com.agentgierka.mmo.agent.model.AgentStatus;
@@ -34,18 +33,11 @@ public class AgentWebSocketController {
         messagingTemplate.convertAndSend(destination, state);
     }
     
-    @EventListener
-    public void onAgentGoalCompleted(AgentGoalCompletedEvent event) {
-        broadcast(event.agentId(), event.agentName(), event.location().getId(), event.x(), event.y());
-    }
+
 
     @EventListener
-    public void onAgentArrived(AgentArrivedEvent event) {
-        // We only care about TELEPORT arrivals here, as NORMAL arrivals 
-        // are now handled via AgentGoalCompletedEvent (if they aren't portals)
-        if (event.type() == MovementType.TELEPORT) {
-            broadcast(event.agentId(), event.agentName(), event.location().getId(), event.x(), event.y());
-        }
+    public void onAgentArrived(AgentArrivedAtWaypointEvent event) {
+        broadcast(event.agentId(), event.agentName(), event.location().getId(), event.x(), event.y());
     }
 
     @EventListener

@@ -1,7 +1,6 @@
 package com.agentgierka.mmo.ai.listener;
 
-import com.agentgierka.mmo.agent.event.AgentArrivedEvent;
-import com.agentgierka.mmo.agent.event.AgentGoalCompletedEvent;
+import com.agentgierka.mmo.agent.event.AgentArrivedAtWaypointEvent;
 import com.agentgierka.mmo.agent.repository.AgentRepository;
 import com.agentgierka.mmo.creature.event.CreatureKilledEvent;
 import com.agentgierka.mmo.ai.service.AgentThinkingService;
@@ -22,19 +21,7 @@ public class AiGoalExecutionListener {
     private final AgentRepository agentRepository;
     private final AgentThinkingService agentThinkingService;
 
-    @EventListener
-    public void onAgentGoalCompleted(AgentGoalCompletedEvent event) {
-        agentRepository.findById(event.agentId()).ifPresent(agent -> {
-            if (agent.hasActiveGoal()) {
-                log.info("Agent {} reached waypoint at {}. Ticking Behavior Tree...", 
-                         agent.getName(), event.location().getName());
-                agentThinkingService.processThinking(agent.getId());
-            } else {
-                log.info("MISSION COMPLETE: Agent {} reached destination at {}. Standing by for new commands.", 
-                         agent.getName(), event.location().getName());
-            }
-        });
-    }
+
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onCreatureKilled(CreatureKilledEvent event) {
@@ -53,12 +40,15 @@ public class AiGoalExecutionListener {
     }
 
     @EventListener
-    public void onAgentArrived(AgentArrivedEvent event) {
+    public void onAgentArrived(AgentArrivedAtWaypointEvent event) {
         agentRepository.findById(event.agentId()).ifPresent(agent -> {
             if (agent.hasActiveGoal()) {
                 log.info("Agent {} arrived at {} (Type: {}). Ticking Behavior Tree...", 
                          agent.getName(), event.location().getName(), event.type());
                 agentThinkingService.processThinking(agent.getId());
+            } else {
+                log.info("MISSION COMPLETE: Agent {} arrived at {} (Type: {}). Standing by for new commands.", 
+                         agent.getName(), event.location().getName(), event.type());
             }
         });
     }

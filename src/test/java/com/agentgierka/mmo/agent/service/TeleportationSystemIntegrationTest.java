@@ -1,7 +1,7 @@
 package com.agentgierka.mmo.agent.service;
 
-import com.agentgierka.mmo.agent.event.AgentArrivedEvent;
-import com.agentgierka.mmo.agent.event.AgentGoalCompletedEvent;
+import com.agentgierka.mmo.agent.event.AgentArrivedAtWaypointEvent;
+import com.agentgierka.mmo.agent.model.MovementType;
 import com.agentgierka.mmo.agent.model.Agent;
 import com.agentgierka.mmo.agent.model.AgentWorldState;
 import com.agentgierka.mmo.agent.repository.AgentRepository;
@@ -162,13 +162,11 @@ class TeleportationSystemIntegrationTest {
         });
 
         // Assert - Part 2: Events (verified outside Act transaction since they are published afterCommit)
-        List<AgentGoalCompletedEvent> goalEvents = eventCollector.getEventsOfType(AgentGoalCompletedEvent.class);
-        List<AgentArrivedEvent> arrivalEvents = eventCollector.getEventsOfType(AgentArrivedEvent.class);
+        List<AgentArrivedAtWaypointEvent> arrivalEvents = eventCollector.getEventsOfType(AgentArrivedAtWaypointEvent.class);
 
-        assertThat(goalEvents).as("Should NOT publish GoalCompletedEvent on portal").isEmpty();
         assertThat(arrivalEvents).as("Should publish exactly one arrival event").hasSize(1);
         assertThat(arrivalEvents.get(0).location().getId()).isEqualTo(mine.getId());
-        assertThat(arrivalEvents.get(0).type().name()).isEqualTo("TELEPORT");
+        assertThat(arrivalEvents.get(0).type()).isEqualTo(MovementType.TELEPORT);
     }
 
     @Test
@@ -193,9 +191,10 @@ class TeleportationSystemIntegrationTest {
             assertThat(updatedAgent.getX()).isEqualTo(10);
             assertThat(updatedAgent.getY()).isEqualTo(10);
 
-            List<AgentGoalCompletedEvent> goalEvents = eventCollector.getEventsOfType(AgentGoalCompletedEvent.class);
-            assertThat(goalEvents).hasSize(1);
-            assertThat(goalEvents.get(0).location().getId()).isEqualTo(forest.getId());
+            List<AgentArrivedAtWaypointEvent> arrivalEvents = eventCollector.getEventsOfType(AgentArrivedAtWaypointEvent.class);
+            assertThat(arrivalEvents).hasSize(1);
+            assertThat(arrivalEvents.get(0).location().getId()).isEqualTo(forest.getId());
+            assertThat(arrivalEvents.get(0).type()).isEqualTo(MovementType.NORMAL);
             return null;
         });
     }

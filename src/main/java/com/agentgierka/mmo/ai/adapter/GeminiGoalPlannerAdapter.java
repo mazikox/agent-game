@@ -89,7 +89,7 @@ public class GeminiGoalPlannerAdapter implements GoalPlanner {
 
             String response = chatModel.call(new Prompt(systemText + "\n" + userPrompt)).getResult().getOutput()
                     .getText();
-            log.info("RAW Planner AI Response for agent Shadow-01: \n{}", response);
+            log.info("RAW Planner AI Response for agent {}: \n{}", perception.name(), response);
 
             // Safer JSON extraction: find first { and last }
             int firstBrace = response.indexOf("{");

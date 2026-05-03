@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class HpPercentCondition implements GoalCondition {
     private final int thresholdPercent;
+    private final ComparisonOperator operator;
 
     @Override
     public boolean isSatisfied(GoalProgress progress, Agent agent) {
@@ -13,6 +14,6 @@ public class HpPercentCondition implements GoalCondition {
             return false;
         }
         int currentPercent = (agent.getStats().getHp() * 100) / agent.getStats().getMaxHp();
-        return currentPercent <= thresholdPercent;
+        return operator.compare(currentPercent, thresholdPercent);
     }
 }

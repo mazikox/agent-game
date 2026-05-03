@@ -42,14 +42,15 @@ public class GoalConditionFactory {
         }
 
         String metric = matcher.group(1).toLowerCase();
-        // String operator = matcher.group(2); // Currently we assume >= or similar logic based on context
+        String opSymbol = matcher.group(2);
+        ComparisonOperator operator = ComparisonOperator.fromSymbol(opSymbol);
         String valueStr = matcher.group(3);
 
         return switch (metric) {
-            case "killcount", "mobcount" -> new KillCountCondition(Integer.parseInt(valueStr));
-            case "level" -> new LevelCondition(Integer.parseInt(valueStr));
-            case "hppercent" -> new HpPercentCondition(Integer.parseInt(valueStr));
-            case "expgained" -> new ExpGainedCondition(Integer.parseInt(valueStr));
+            case "killcount", "mobcount" -> new KillCountCondition(Integer.parseInt(valueStr), operator);
+            case "level" -> new LevelCondition(Integer.parseInt(valueStr), operator);
+            case "hppercent" -> new HpPercentCondition(Integer.parseInt(valueStr), operator);
+            case "expgained" -> new ExpGainedCondition(Integer.parseInt(valueStr), operator);
             case "locationreached" -> new LocationReachedCondition(valueStr);
             default -> {
                 log.warn("Unsupported metric in condition: '{}'", metric);

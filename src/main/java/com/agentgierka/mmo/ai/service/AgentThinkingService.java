@@ -13,6 +13,7 @@ import com.agentgierka.mmo.world.PortalRepository;
 import com.agentgierka.mmo.creature.repository.CreatureInstanceRepository;
 import com.agentgierka.mmo.creature.model.CreatureState;
 import com.agentgierka.mmo.agent.event.AgentConsoleLogEvent;
+import com.agentgierka.mmo.ai.event.AiThinkingRequiredEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -56,12 +57,10 @@ public class AgentThinkingService {
             return;
         }
 
-        // Fetch perception (portals and creatures)
-        List<String> portals = fetchPortals(agent);
-        List<String> creatures = fetchCreatures(agent);
-
         try {
             if (behaviorTreeRegistry.get(agentId).isEmpty()) {
+                List<String> portals = fetchPortals(agent);
+                List<String> creatures = fetchCreatures(agent);
                 planNewGoal(agent, portals, creatures);
             }
 
@@ -131,8 +130,8 @@ public class AgentThinkingService {
 
     private void ensureFollowUpTickIfIdle(Agent agent) {
         if (shouldFireFollowUpTick(agent)) {
-            log.info("Agent {} is IDLE with active goal after tick — firing immediate follow-up tick.", agent.getName());
-            behaviorTreeExecutor.tick(agent);
+            log.debug("Agent {} is IDLE with active goal after tick — scheduling follow-up tick via event.", agent.getName());
+            eventPublisher.publishEvent(new AiThinkingRequiredEvent(agent.getId()));
         }
     }
 
@@ -143,12 +142,17 @@ public class AgentThinkingService {
     }
 
     private void handleThinkingError(Agent agent, Exception e) {
-        log.error("Error during AI thinking process for agent {}: {}", agent.getName(), e.getMessage(), e);
+        log.error("AI thinking error for agent {}: {}", agent.getName(), e.getMessage());
+        if (log.isDebugEnabled()) {
+            log.debug("Stack trace for agent {}:", agent.getName(), e);
+        }
+
         String errorMsg = Optional.ofNullable(e.getMessage())
                 .map(msg -> msg.length() > 200 ? msg.substring(0, 197) + "..." : msg)
                 .orElse("Unknown error");
         
         agent.updateStatus(AgentStatus.IDLE, "AI thinking error: " + errorMsg);
+        abortCurrentPlan(agent.getId());
         agentRepository.save(agent);
     }
 }
