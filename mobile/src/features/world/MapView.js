@@ -68,12 +68,19 @@ const getMonsterIcon = (name) => {
 const CreatureMarker = ({ creature, mapWidth, mapHeight, onHoverStart, onHoverEnd }) => {
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
   const [measured, setMeasured] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
 
   const iconSource = getMonsterIcon(creature.name);
 
   const webHoverProps = Platform.OS === 'web' ? {
-    onMouseEnter: () => onHoverStart?.('creature', creature, dimensions.height),
-    onMouseLeave: () => onHoverEnd?.(),
+    onMouseEnter: () => {
+      setIsHovered(true);
+      onHoverStart?.('creature', creature, dimensions.height);
+    },
+    onMouseLeave: () => {
+      setIsHovered(false);
+      onHoverEnd?.();
+    },
   } : {};
 
   return (
@@ -86,13 +93,34 @@ const CreatureMarker = ({ creature, mapWidth, mapHeight, onHoverStart, onHoverEn
         marginLeft: -dimensions.width / 2,
         marginTop: -dimensions.height / 2,
         opacity: measured ? 1 : 0,
-        zIndex: 90,
+        zIndex: isHovered ? 110 : 90, // Bring to front when hovered
+        alignItems: 'center',
         ...(Platform.OS === 'web' ? { cursor: 'pointer' } : {}),
       }}
     >
+      {measured && (
+        <View style={[
+          styles.entityShadow, 
+          { 
+            width: dimensions.width * 0.65, 
+            height: dimensions.width * 0.25,
+            borderRadius: dimensions.width,
+            bottom: -2 
+          }
+        ]} pointerEvents="none" />
+      )}
       <Image 
         source={iconSource} 
-        style={dimensions.width ? { width: dimensions.width, height: dimensions.height } : {}}
+        style={[
+          dimensions.width ? { width: dimensions.width, height: dimensions.height } : {},
+          isHovered && Platform.OS === 'web' ? {
+            // "Flash" highlight: boost brightness and contrast without bounding-box drop shadows
+            filter: 'brightness(1.15) contrast(1.05)',
+            transform: [{ scale: 1.05 }]
+          } : {
+            transform: [{ scale: 1 }]
+          }
+        ]}
         resizeMode="contain"
         onLayout={(e) => {
           const { width, height } = e.nativeEvent.layout;
@@ -237,7 +265,7 @@ export const MapView = ({ agentX, agentY, mapWidth, mapHeight, portals = [], cre
           <View
             style={[
               styles.canvas,
-              onPress && Platform.OS === 'web' && { cursor: 'crosshair' },
+              onPress && Platform.OS === 'web' && { cursor: `url(${require('../../../assets/ui/cursor.png')}), auto` },
             ]}
             onClick={onPress && Platform.OS === 'web' ? (e) => {
               const rect = e.currentTarget.getBoundingClientRect();
@@ -327,6 +355,15 @@ export const MapView = ({ agentX, agentY, mapWidth, mapHeight, portals = [], cre
                       top: agentPosPerc.y.interpolate({ inputRange: [0, 100], outputRange: ['0%', '100%'] }),
                     },
                   ]}>
+                    <View style={[
+                      styles.entityShadow, 
+                      { 
+                        width: 36, 
+                        height: 14,
+                        borderRadius: 18,
+                        bottom: -2 
+                      }
+                    ]} pointerEvents="none" />
                     <Image 
                       source={require('../../../assets/agent/default.png')} 
                       style={{ width: 64, height: 64 }} 
@@ -336,8 +373,6 @@ export const MapView = ({ agentX, agentY, mapWidth, mapHeight, portals = [], cre
                 </View>
               </ImageBackground>
             </Animated.View>
-
-            />
           </View>
         </MapWindowFrame>
 
@@ -449,6 +484,12 @@ const styles = StyleSheet.create({
     height: 60,
     marginLeft: -30,
     marginTop: -45,
+  },
+  entityShadow: {
+    position: 'absolute',
+    backgroundColor: 'rgba(0, 0, 0, 0.35)',
+    alignSelf: 'center',
+    ...(Platform.OS === 'web' ? { filter: 'blur(3px)' } : {}),
   },
   pinWrapper: {
     shadowColor: theme.colors.accent,
