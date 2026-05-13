@@ -1,8 +1,9 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { View, StyleSheet, Text, ImageBackground, Animated, Image, Platform } from 'react-native';
 import { theme } from '../../theme/theme';
 import { MapPin, Atom } from 'lucide-react-native';
 import { MapWindowFrame } from './MapWindowFrame';
+import { WorldTooltip } from './tooltips/WorldTooltip';
 
 
 const PulseIcon = ({ children }) => {
@@ -64,14 +65,20 @@ const getMonsterIcon = (name) => {
   return MONSTER_ICONS[name] || require('../../../assets/mobs/bug.png');
 };
 
-const CreatureMarker = ({ creature, mapWidth, mapHeight }) => {
+const CreatureMarker = ({ creature, mapWidth, mapHeight, onHoverStart, onHoverEnd }) => {
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
   const [measured, setMeasured] = useState(false);
 
   const iconSource = getMonsterIcon(creature.name);
 
+  const webHoverProps = Platform.OS === 'web' ? {
+    onMouseEnter: () => onHoverStart?.('creature', creature, dimensions.height),
+    onMouseLeave: () => onHoverEnd?.(),
+  } : {};
+
   return (
     <View
+      {...webHoverProps}
       style={{
         position: 'absolute',
         left: `${(Number(creature.x) / Math.max(mapWidth, 1)) * 100}%`,
@@ -80,6 +87,7 @@ const CreatureMarker = ({ creature, mapWidth, mapHeight }) => {
         marginTop: -dimensions.height / 2,
         opacity: measured ? 1 : 0,
         zIndex: 90,
+        ...(Platform.OS === 'web' ? { cursor: 'pointer' } : {}),
       }}
     >
       <Image 
@@ -115,6 +123,36 @@ const CreatureMarker = ({ creature, mapWidth, mapHeight }) => {
 
 export const MapView = ({ agentX, agentY, mapWidth, mapHeight, portals = [], creatures = [], locationName = "", agentName = "Shadow-01", onPress }) => {
   const config = MAP_CONFIG[locationName] || MAP_CONFIG['default'];
+
+  // --- Tooltip state (centralized for all world objects) ---
+  const [hoveredObject, setHoveredObject] = useState(null);
+  const hoverTimerRef = useRef(null);
+  const currentHoverIdRef = useRef(null);
+  const TOOLTIP_DELAY_MS = 600;
+
+  const handleHoverStart = useCallback((type, data, height = 0) => {
+    const objectId = data.instanceId || data.targetLocationName || `${type}-${data.x}-${data.y}`;
+
+    if (currentHoverIdRef.current === objectId && hoverTimerRef.current) return;
+
+    clearTimeout(hoverTimerRef.current);
+    currentHoverIdRef.current = objectId;
+
+    hoverTimerRef.current = setTimeout(() => {
+      setHoveredObject({ type, data, measuredHeight: height });
+    }, TOOLTIP_DELAY_MS);
+  }, []);
+
+  const handleHoverEnd = useCallback(() => {
+    clearTimeout(hoverTimerRef.current);
+    hoverTimerRef.current = null;
+    currentHoverIdRef.current = null;
+    setHoveredObject(null);
+  }, []);
+
+  useEffect(() => {
+    return () => clearTimeout(hoverTimerRef.current);
+  }, []);
 
   const [currentMap, setCurrentMap] = useState(config.uri);
   const [currentImgW, setCurrentImgW] = useState(1024);
@@ -249,6 +287,18 @@ export const MapView = ({ agentX, agentY, mapWidth, mapHeight, portals = [], cre
                           top: `${(portal.sourceY / Math.max(mapHeight, 1)) * 100}%`,
                         },
                       ]}
+                      {...(Platform.OS === 'web' ? {
+                        onMouseEnter: () => handleHoverStart('portal', portal),
+                        onMouseLeave: () => handleHoverEnd(),
+                        style: [
+                          styles.portalContainer,
+                          {
+                            left: `${(portal.sourceX / Math.max(mapWidth, 1)) * 100}%`,
+                            top: `${(portal.sourceY / Math.max(mapHeight, 1)) * 100}%`,
+                            cursor: 'pointer',
+                          },
+                        ],
+                      } : {})}
                     >
                       <PulseIcon>
                         <View style={styles.portalIconWrapper}>
@@ -264,7 +314,9 @@ export const MapView = ({ agentX, agentY, mapWidth, mapHeight, portals = [], cre
                       key={creature.instanceId} 
                       creature={creature} 
                       mapWidth={mapWidth} 
-                      mapHeight={mapHeight} 
+                      mapHeight={mapHeight}
+                      onHoverStart={handleHoverStart}
+                      onHoverEnd={handleHoverEnd}
                     />
                   ))}
 
@@ -284,8 +336,22 @@ export const MapView = ({ agentX, agentY, mapWidth, mapHeight, portals = [], cre
                 </View>
               </ImageBackground>
             </Animated.View>
+
+            />
           </View>
         </MapWindowFrame>
+
+        {/* Generic World Object Tooltip (Rendered outside MapWindowFrame to avoid overflow clipping) */}
+        <WorldTooltip
+          hoveredObject={hoveredObject}
+          mapWidth={mapWidth}
+          mapHeight={mapHeight}
+          imgW={currentImgW}
+          imgH={currentImgH}
+          cameraOffset={cameraPosRef.current}
+          // Offset for MapWindowFrame header (~42px) and border (~1.5px)
+          uiOffset={{ x: 1.5, y: 42 }}
+        />
       </Animated.View>
     </View>
   );
@@ -315,6 +381,7 @@ const styles = StyleSheet.create({
     height: 800,
     overflow: 'hidden',
     position: 'relative',
+    ...(Platform.OS === 'web' ? { 'data-tooltip-canvas': 'true' } : {}),
   },
   worldOverlay: {
     ...StyleSheet.absoluteFillObject,

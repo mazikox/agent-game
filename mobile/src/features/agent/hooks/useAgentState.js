@@ -202,6 +202,41 @@ export function useAgentState() {
     }
   };
 
+  const approachNearest = async () => {
+    if (!agent || !creatures) return;
+
+    const targets = creatures
+      .filter(c => c.state === 'ALIVE' || c.currentHp > 0)
+      .map(c => ({
+        ...c,
+        distance: Math.sqrt(Math.pow(c.x - agent.x, 2) + Math.pow(c.y - agent.y, 2))
+      }))
+      .sort((a, b) => a.distance - b.distance);
+
+    if (targets.length === 0) {
+      addLog("No living enemies nearby to approach.");
+      return;
+    }
+
+    const target = targets[0];
+    try {
+      addLog(`Approaching ${target.name}...`);
+      await agentApi.move(agent.id, target.x, target.y);
+    } catch (err) {
+      addLog("Approach failed: " + (err.response?.data?.message || err.message));
+    }
+  };
+
+  const stopAgent = async () => {
+    if (!agent) return;
+    try {
+      addLog("Stopping agent...");
+      await agentApi.interrupt(agent.id);
+    } catch (err) {
+      addLog("Stop failed: " + (err.response?.data?.message || err.message));
+    }
+  };
+
   return {
     agent,
     location,
@@ -211,6 +246,8 @@ export function useAgentState() {
     connected,
     handleCommand,
     attackNearest,
+    approachNearest,
+    stopAgent,
     performCombatAction,
     creatures: (creatures || []).filter(c => c.state === 'ALIVE' || c.state === 'IN_COMBAT')
   };

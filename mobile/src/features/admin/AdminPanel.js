@@ -30,19 +30,24 @@ const getMonsterIcon = (name) => {
   return MONSTER_ICONS[name] || require('../../../assets/monster_avatar.png');
 };
 
-export const AdminPanel = ({ agent, location, creatures }) => {
+export const AdminPanel = ({ location, selectedX, selectedY, onClose }) => {
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [modalVisible, setModalVisible] = useState(false);
-  const [selectedX, setSelectedX] = useState(0);
-  const [selectedY, setSelectedY] = useState(0);
   const [selectedTemplate, setSelectedTemplate] = useState(null);
-  const [wanderRadius, setWanderRadius] = useState('5');
+  const [wanderRadius, setWanderRadius] = useState('0');
   const [respawnSeconds, setRespawnSeconds] = useState('60');
+  const [quickSpawn, setQuickSpawn] = useState(false);
 
   useEffect(() => {
     fetchTemplates();
   }, []);
+
+  // Quick Spawn Logic: Auto-save when coordinates change
+  useEffect(() => {
+    if (quickSpawn && selectedX !== null && selectedY !== null && selectedTemplate && !loading) {
+      handleSaveSpawn();
+    }
+  }, [selectedX, selectedY]);
 
   const fetchTemplates = async () => {
     try {
@@ -60,15 +65,9 @@ export const AdminPanel = ({ agent, location, creatures }) => {
     }
   };
 
-  const handleMapPress = (x, y) => {
-    setSelectedX(x);
-    setSelectedY(y);
-    setModalVisible(true);
-  };
-
   const handleSaveSpawn = async () => {
     if (!selectedTemplate) {
-      Alert.alert("Błąd", "Wybierz potwora.");
+      if (!quickSpawn) Alert.alert("Błąd", "Wybierz potwora.");
       return;
     }
 
@@ -86,278 +85,283 @@ export const AdminPanel = ({ agent, location, creatures }) => {
         headers: { Authorization: `Bearer ${token}` }
       });
 
-      Alert.alert("Sukces", "Punkt respawnu został utworzony!");
-      setModalVisible(false);
-      setSelectedTemplate(null);
+      if (!quickSpawn) {
+        Alert.alert("Sukces", "Punkt respawnu został utworzony!");
+      }
+      // Keep selected template for next quick spawn
     } catch (error) {
       console.error("Failed to create spawn point:", error);
-      Alert.alert("Błąd", "Nie udało się utworzyć punktu respawnu.");
+      if (!quickSpawn) Alert.alert("Błąd", "Nie udało się utworzyć punktu respawnu.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <>
-      <MapView 
-        agentX={agent?.x || 0}
-        agentY={agent?.y || 0}
-        mapWidth={location ? location.width : 100}
-        mapHeight={location ? location.height : 100}
-        portals={location ? location.portals : []}
-        creatures={creatures || []}
-        locationName={location ? location.name : 'Unknown Realm'}
-        agentName={agent?.name || 'Shadow-01'}
-        onPress={handleMapPress}
-      />
-
-      {/* Floating Admin Badge */}
-      <View style={styles.adminBadge}>
-        <Shield size={16} color="#ef4444" style={{ marginRight: 6 }} />
-        <Text style={styles.adminBadgeText}>TRYB ADMINISTRATORA (KLIKNIJ MAPĘ)</Text>
+    <View style={styles.container}>
+      <View style={styles.header}>
+        <View style={styles.headerTitleRow}>
+          <Shield size={18} color={theme.colors.accent} />
+          <Text style={styles.headerTitle}>ADMIN PANEL</Text>
+        </View>
+        <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
+          <X size={20} color="#a0aec0" />
+        </TouchableOpacity>
       </View>
 
-      {/* Modal do tworzenia respawnu */}
-      <Modal
-        animationType="slide"
-        transparent={true}
-        visible={modalVisible}
-        onRequestClose={() => setModalVisible(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Nowy Respawn ({selectedX}, {selectedY})</Text>
-              <TouchableOpacity onPress={() => setModalVisible(false)}>
-                <X size={24} color="#a0aec0" />
-              </TouchableOpacity>
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        {/* Quick Spawn Toggle */}
+        <TouchableOpacity 
+          style={styles.quickSpawnRow} 
+          onPress={() => setQuickSpawn(!quickSpawn)}
+        >
+          <View style={[styles.checkbox, quickSpawn && styles.checkboxActive]}>
+            {quickSpawn && <View style={styles.checkboxInner} />}
+          </View>
+          <Text style={styles.quickSpawnLabel}>QUICK SPAWN (AUTO-SAVE)</Text>
+        </TouchableOpacity>
+
+        {selectedX !== null ? (
+          <>
+            <View style={styles.coordBadge}>
+              <Text style={styles.coordText}>CEL: {selectedX}, {selectedY}</Text>
             </View>
 
-            <ScrollView style={styles.modalForm}>
-              <Text style={styles.label}>Wybierz potwora:</Text>
-              {loading && <ActivityIndicator color={theme.colors.accent} style={{ margin: 10 }} />}
-              
-              <View style={styles.templateList}>
-                {templates.map(t => (
-                  <TouchableOpacity 
-                    key={t.id} 
-                    style={[
-                      styles.templateItem, 
-                      selectedTemplate?.id === t.id && styles.selectedTemplateItem
-                    ]}
-                    onPress={() => setSelectedTemplate(t)}
-                  >
-                    <Image 
-                      source={getMonsterIcon(t.name)} 
-                      style={styles.monsterThumb} 
-                    />
-                    <View>
-                      <Text style={[
-                        styles.templateName,
-                        selectedTemplate?.id === t.id && styles.selectedTemplateName
-                      ]}>{t.name}</Text>
-                      <Text style={styles.templateMeta}>Lvl {t.level} | {t.rank}</Text>
-                    </View>
-                  </TouchableOpacity>
-                ))}
-              </View>
+            <Text style={styles.label}>Wybierz potwora:</Text>
+            <View style={styles.templateList}>
+              {templates.map(t => (
+                <TouchableOpacity 
+                  key={t.id} 
+                  style={[
+                    styles.templateItem, 
+                    selectedTemplate?.id === t.id && styles.selectedTemplateItem
+                  ]}
+                  onPress={() => setSelectedTemplate(t)}
+                >
+                  <Image source={getMonsterIcon(t.name)} style={styles.monsterThumb} />
+                  <View style={styles.templateInfo}>
+                    <Text style={[
+                      styles.templateName,
+                      selectedTemplate?.id === t.id && styles.selectedTemplateName
+                    ]}>{t.name}</Text>
+                    <Text style={styles.templateMeta}>Lvl {t.level}</Text>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </View>
 
-              <Text style={styles.label}>Promień wędrówki (Wander Radius):</Text>
-              <TextInput
-                style={styles.input}
-                value={wanderRadius}
-                onChangeText={setWanderRadius}
-                keyboardType="numeric"
-                placeholder="np. 5"
-                placeholderTextColor="#718096"
-              />
+            <Text style={styles.label}>Wander Radius:</Text>
+            <TextInput
+              style={styles.input}
+              value={wanderRadius}
+              onChangeText={setWanderRadius}
+              keyboardType="numeric"
+              placeholder="np. 0"
+              placeholderTextColor="#718096"
+            />
 
-              <Text style={styles.label}>Czas respawnu (sekundy):</Text>
-              <TextInput
-                style={styles.input}
-                value={respawnSeconds}
-                onChangeText={setRespawnSeconds}
-                keyboardType="numeric"
-                placeholder="np. 60"
-                placeholderTextColor="#718096"
-              />
+            <Text style={styles.label}>Respawn (sek):</Text>
+            <TextInput
+              style={styles.input}
+              value={respawnSeconds}
+              onChangeText={setRespawnSeconds}
+              keyboardType="numeric"
+              placeholder="np. 60"
+              placeholderTextColor="#718096"
+            />
 
+            {!quickSpawn && (
               <TouchableOpacity 
-                style={styles.saveButton}
+                style={[styles.saveButton, loading && { opacity: 0.7 }]}
                 onPress={handleSaveSpawn}
                 disabled={loading}
               >
-                <Plus size={20} color="#fff" style={{ marginRight: 8 }} />
+                <Plus size={18} color="#fff" style={{ marginRight: 6 }} />
                 <Text style={styles.saveButtonText}>Zapisz Respawn</Text>
               </TouchableOpacity>
-            </ScrollView>
+            )}
+          </>
+        ) : (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyText}>KLIKNIJ NA MAPĘ,</Text>
+            <Text style={styles.emptyTextSub}>ABY WYBRAĆ PUNKT</Text>
           </View>
-        </View>
-      </Modal>
-    </>
+        )}
+      </ScrollView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: 'rgba(10, 10, 11, 0.95)',
-    borderRadius: 12,
+    width: 200,
+    backgroundColor: 'rgba(15, 15, 18, 0.95)',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.1)',
-    padding: 15,
+    borderRadius: 12,
+    padding: 12,
+    maxHeight: 600, // Zwiększona wysokość
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 10,
   },
   header: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 15,
-    gap: 10,
+    marginBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.05)',
+    paddingBottom: 8,
+  },
+  headerTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   headerTitle: {
     color: theme.colors.accent,
-    fontSize: 20,
+    fontSize: 14,
     fontFamily: theme.typography.fantasy,
+    letterSpacing: 1,
+  },
+  closeBtn: {
+    padding: 4,
   },
   content: {
     flex: 1,
+  },
+  quickSpawnRow: {
     flexDirection: 'row',
-    gap: 15,
-  },
-  mapContainer: {
-    flex: 1,
     alignItems: 'center',
+    marginBottom: 12,
+    gap: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    padding: 8,
+    borderRadius: 6,
   },
-  instructionText: {
-    color: '#a0aec0',
-    marginBottom: 10,
-    textAlign: 'center',
-    fontFamily: 'sans-serif',
-    fontSize: 12,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+  checkbox: {
+    width: 16,
+    height: 16,
+    borderWidth: 1.5,
+    borderColor: '#4a5568',
+    borderRadius: 4,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  modalContent: {
-    width: '80%',
-    maxHeight: '80%',
-    backgroundColor: '#1a202c',
-    borderRadius: 12,
-    borderWidth: 1,
+  checkboxActive: {
     borderColor: theme.colors.accent,
-    padding: 20,
+    backgroundColor: 'rgba(246, 173, 85, 0.2)',
   },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
-    paddingBottom: 10,
+  checkboxInner: {
+    width: 8,
+    height: 8,
+    backgroundColor: theme.colors.accent,
+    borderRadius: 1,
   },
-  modalTitle: {
-    color: '#fff',
-    fontSize: 18,
-    fontFamily: theme.typography.fantasy,
-  },
-  modalForm: {
-    flex: 1,
-  },
-  label: {
+  quickSpawnLabel: {
     color: '#cbd5e0',
-    fontSize: 14,
-    marginTop: 10,
-    marginBottom: 5,
+    fontSize: 9,
     fontWeight: 'bold',
   },
-  input: {
-    backgroundColor: '#2d3748',
-    color: '#fff',
-    borderRadius: 6,
-    padding: 10,
+  coordBadge: {
+    backgroundColor: 'rgba(246, 173, 85, 0.1)',
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 4,
     marginBottom: 10,
     borderWidth: 1,
-    borderColor: '#4a5568',
+    borderColor: 'rgba(246, 173, 85, 0.3)',
+  },
+  coordText: {
+    color: theme.colors.accent,
+    fontSize: 12,
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  label: {
+    color: '#a0aec0',
+    fontSize: 10,
+    fontWeight: 'bold',
+    marginBottom: 4,
+    textTransform: 'uppercase',
+  },
+  input: {
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    color: '#fff',
+    borderRadius: 6,
+    padding: 8,
+    fontSize: 12,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
   templateList: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
+    gap: 6,
     marginBottom: 10,
   },
   templateItem: {
-    backgroundColor: '#2d3748',
-    borderRadius: 6,
-    padding: 10,
-    borderWidth: 1,
-    borderColor: '#4a5568',
-    minWidth: 140,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-  },
-  monsterThumb: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderRadius: 6,
+    padding: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.05)',
+    gap: 8,
   },
   selectedTemplateItem: {
     borderColor: theme.colors.accent,
     backgroundColor: 'rgba(246, 173, 85, 0.1)',
   },
+  monsterThumb: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+  },
+  templateInfo: {
+    flex: 1,
+  },
   templateName: {
     color: '#fff',
-    fontSize: 14,
+    fontSize: 11,
     fontWeight: 'bold',
   },
   selectedTemplateName: {
     color: theme.colors.accent,
   },
   templateMeta: {
-    color: '#a0aec0',
-    fontSize: 10,
-    marginTop: 2,
+    color: '#718096',
+    fontSize: 9,
   },
   saveButton: {
     backgroundColor: '#2f855a',
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 12,
+    padding: 10,
     borderRadius: 6,
-    marginTop: 20,
+    marginTop: 5,
     marginBottom: 10,
   },
   saveButtonText: {
     color: '#fff',
-    fontSize: 16,
+    fontSize: 13,
     fontWeight: 'bold',
   },
-  adminBadge: {
-    position: 'absolute',
-    top: 20,
-    left: 20,
-    backgroundColor: 'rgba(220, 38, 38, 0.9)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    flexDirection: 'row',
+  emptyState: {
+    paddingVertical: 30,
     alignItems: 'center',
-    zIndex: 1000,
-    borderWidth: 1,
-    borderColor: '#fca5a5',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.5,
-    shadowRadius: 3,
   },
-  adminBadgeText: {
-    color: '#fff',
-    fontSize: 11,
+  emptyText: {
+    color: '#718096',
+    fontSize: 12,
     fontWeight: 'bold',
-    letterSpacing: 1,
+  },
+  emptyTextSub: {
+    color: '#4a5568',
+    fontSize: 10,
+    marginTop: 4,
   }
 });

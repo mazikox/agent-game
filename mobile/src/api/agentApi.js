@@ -74,4 +74,20 @@ export const agentApi = {
     const response = await apiClient.get(`/characters/${characterId}/inventory`);
     return response.data;
   },
+
+  /**
+   * Direct command to move agent to coordinates (bypassing AI planner)
+   */
+  move: async (id, x, y) => {
+    const response = await apiClient.post(`/agents/${id}/move`, { x, y });
+    return response.data;
+  },
+
+  /**
+   * Direct command to interrupt agent's current action (bypassing AI planner)
+   */
+  interrupt: async (id) => {
+    const response = await apiClient.post(`/agents/${id}/interrupt`);
+    return response.data;
+  },
 };

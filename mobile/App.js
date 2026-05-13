@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { StyleSheet, View, SafeAreaView, StatusBar, Text, ActivityIndicator, ImageBackground, useWindowDimensions } from 'react-native';
 import hudConfig from './src/theme/hudConfig.json';
 import { theme } from './src/theme/theme';
 import { AgentProfile } from './src/features/agent/AgentProfile';
 import { MapView } from './src/features/world/MapView';
 import { AgentConsole } from './src/features/hud/AgentConsole';
+import { AgentActionsPanel } from './src/features/hud/AgentActionsPanel';
 import { SideMenu } from './src/features/hud/SideMenu';
 import { HUDElement } from './src/features/hud/HUDElement';
 import { LoginScreen } from './src/features/auth/LoginScreen';
@@ -22,20 +23,30 @@ import { useAgentState } from './src/features/agent/hooks/useAgentState';
  * Main Content component that uses the SocketContext.
  */
 function GameContent() {
-  const { 
-    agent, 
-    location, 
+  const {
+    agent,
+    location,
     creatures,
-    logs, 
-    loading, 
-    error, 
-    connected, 
+    logs,
+    loading,
+    error,
+    connected,
     handleCommand,
     attackNearest,
-    performCombatAction 
+    approachNearest,
+    stopAgent,
+    performCombatAction
   } = useAgentState();
 
   const [activeTab, setActiveTab] = useState('map');
+  const [adminCoords, setAdminCoords] = useState({ x: null, y: null });
+
+  useEffect(() => {
+    // Reset selected coords when leaving admin tab
+    if (activeTab !== 'admin') {
+      setAdminCoords({ x: null, y: null });
+    }
+  }, [activeTab]);
 
   const { width } = useWindowDimensions();
   const isCompact = width < 768; // Tablet threshold
@@ -54,7 +65,7 @@ function GameContent() {
     switch (activeTab) {
       case 'map':
         return (
-          <MapView 
+          <MapView
             agentX={agent?.x || 0}
             agentY={agent?.y || 0}
             mapWidth={location ? location.width : 100}
@@ -68,7 +79,19 @@ function GameContent() {
       case 'inventory':
         return <InventoryPanel agentId={agent?.id} />;
       case 'admin':
-        return <AdminPanel agent={agent} location={location} creatures={creatures} />;
+        return (
+          <MapView
+            agentX={agent?.x || 0}
+            agentY={agent?.y || 0}
+            mapWidth={location ? location.width : 100}
+            mapHeight={location ? location.height : 100}
+            portals={location ? location.portals : []}
+            creatures={creatures || []}
+            locationName={location ? location.name : 'Unknown Realm'}
+            agentName={agent?.name || 'Shadow-01'}
+            onPress={(x, y) => setAdminCoords({ x, y })}
+          />
+        );
       default:
         return (
           <View style={[styles.container, styles.center, { padding: 20 }]}>
@@ -86,13 +109,13 @@ function GameContent() {
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.fantasy.stone }]}>
       <StatusBar hidden />
-      
+
       {/* MAIN INTEGRATED LAYOUT */}
       <View style={styles.mainRow}>
-          {/* CENTER: MAP AREA */}
-          <View style={styles.mapArea}>
-            {renderMainContent()}
-          </View>
+        {/* CENTER: MAP AREA */}
+        <View style={styles.mapArea}>
+          {renderMainContent()}
+        </View>
       </View>
 
       {/* RIGHT: SIDEBAR (Absolute positioned to prevent overlapping by overlay) */}
@@ -100,55 +123,74 @@ function GameContent() {
         <SideMenu activeTab={activeTab} onTabChange={setActiveTab} />
       </View>
 
-        {/* HUD OVERLAY (ABSOLUTE ELEMENTS) */}
-        <View style={styles.hudOverlay} pointerEvents="box-none">
-          <SafeAreaView style={{ flex: 1 }} pointerEvents="box-none">
-            
-            <HUDElement id="AGENT_PROFILE">
-              <AgentProfile 
-                name={agent?.name || 'Shadow-01'}
-                level={agent?.level || 1}
-                hp={agent?.hp || 100}
-                maxHp={agent?.maxHp || 100}
-                status={agent?.status}
-                x={agent?.x}
-                y={agent?.y}
-                targetId={agent?.targetId}
-                targetName={agent?.targetName}
-                targetHp={agent?.targetHp}
-                targetMaxHp={agent?.targetMaxHp}
-                creatures={creatures}
-                currentTask={agent?.currentTask}
-                currentAction={agent?.currentActionDescription}
-                hudConfig={currentHudConfig}
-                onAttackNearest={attackNearest}
-                onCombatAction={performCombatAction}
+      {/* HUD OVERLAY (ABSOLUTE ELEMENTS) */}
+      <View style={styles.hudOverlay} pointerEvents="box-none">
+        <SafeAreaView style={{ flex: 1 }} pointerEvents="box-none">
+
+          <HUDElement id="AGENT_PROFILE">
+            <AgentProfile
+              name={agent?.name || 'Shadow-01'}
+              level={agent?.level || 1}
+              hp={agent?.hp || 100}
+              maxHp={agent?.maxHp || 100}
+              status={agent?.status}
+              x={agent?.x}
+              y={agent?.y}
+              targetId={agent?.targetId}
+              targetName={agent?.targetName}
+              targetHp={agent?.targetHp}
+              targetMaxHp={agent?.targetMaxHp}
+              creatures={creatures}
+              currentTask={agent?.currentTask}
+              currentAction={agent?.currentActionDescription}
+              hudConfig={currentHudConfig}
+              onAttackNearest={attackNearest}
+              onCombatAction={performCombatAction}
+            />
+          </HUDElement>
+
+          <HUDElement id="AGENT_CONSOLE">
+            <AgentConsole
+              agentId={agent?.id}
+              logs={logs}
+              onCommandSent={handleCommand}
+            />
+          </HUDElement>
+
+          <HUDElement id="AGENT_ACTIONS">
+            <AgentActionsPanel
+              onApproachEnemy={approachNearest}
+              onAttackEnemy={attackNearest}
+              onStop={stopAgent}
+            />
+          </HUDElement>
+
+          {activeTab === 'admin' && (
+            <HUDElement id="ADMIN_PANEL">
+              <AdminPanel
+                location={location}
+                selectedX={adminCoords.x}
+                selectedY={adminCoords.y}
+                onClose={() => setAdminCoords({ x: null, y: null })}
               />
             </HUDElement>
+          )}
 
-            <HUDElement id="AGENT_CONSOLE">
-              <AgentConsole 
-                agentId={agent?.id} 
-                logs={logs}
-                onCommandSent={handleCommand} 
-              />
-            </HUDElement>
-
-          </SafeAreaView>
-        </View>
-
-        {!connected && (
-          <View style={styles.onlineBadge}>
-            <Text style={styles.onlineText}>Reconnecting...</Text>
-          </View>
-        )}
+        </SafeAreaView>
       </View>
-    );
+
+      {!connected && (
+        <View style={styles.onlineBadge}>
+          <Text style={styles.onlineText}>Reconnecting...</Text>
+        </View>
+      )}
+    </View>
+  );
 }
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  
+
   // FONT LOADING
   const [fontsLoaded] = useFonts({
     Cinzel_700Bold,
@@ -175,7 +217,7 @@ export default function App() {
 
   return (
     <SocketProvider>
-       <GameContent />
+      <GameContent />
     </SocketProvider>
   );
 }

@@ -15,7 +15,7 @@ class GoalConditionTest {
     @DisplayName("KillCountCondition should work correctly")
     void testKillCount() {
         GoalProgress progress = new GoalProgress();
-        GoalCondition condition = new KillCountCondition(2);
+        GoalCondition condition = new KillCountCondition(2, ComparisonOperator.GREATER_THAN_OR_EQUAL);
 
         assertFalse(condition.isSatisfied(progress, null));
         
@@ -33,7 +33,7 @@ class GoalConditionTest {
         AgentStats stats = AgentStats.builder().level(1).build();
         when(agent.getStats()).thenReturn(stats);
 
-        GoalCondition condition = new LevelCondition(2);
+        GoalCondition condition = new LevelCondition(2, ComparisonOperator.GREATER_THAN_OR_EQUAL);
         assertFalse(condition.isSatisfied(null, agent));
 
         stats = stats.toBuilder().level(2).build();
@@ -48,7 +48,7 @@ class GoalConditionTest {
         AgentStats stats = AgentStats.builder().hp(100).maxHp(100).build();
         when(agent.getStats()).thenReturn(stats);
 
-        GoalCondition condition = new HpPercentCondition(30);
+        GoalCondition condition = new HpPercentCondition(30, ComparisonOperator.LESS_THAN_OR_EQUAL);
         
         // 100/100 = 100% ( > 30%)
         assertFalse(condition.isSatisfied(null, agent));
@@ -67,8 +67,8 @@ class GoalConditionTest {
         AgentStats stats = AgentStats.builder().level(1).build();
         when(agent.getStats()).thenReturn(stats);
 
-        GoalCondition kills = new KillCountCondition(1);
-        GoalCondition level = new LevelCondition(2);
+        GoalCondition kills = new KillCountCondition(1, ComparisonOperator.GREATER_THAN_OR_EQUAL);
+        GoalCondition level = new LevelCondition(2, ComparisonOperator.GREATER_THAN_OR_EQUAL);
         GoalCondition compound = kills.and(level);
 
         // Kills: 0, Lvl: 1 -> False
