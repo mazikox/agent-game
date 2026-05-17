@@ -1,10 +1,8 @@
 import axios from 'axios';
 import { authService } from './authService';
 
-// The backend is running at localhost:8080. 
-// For Expo Web, we can use localhost. 
-// For a physical device, we would need the local IP (e.g., 192.168.1.x).
-export const BASE_URL = 'http://localhost:8080';
+// The backend URL is defined in the .env file as EXPO_PUBLIC_API_URL
+export const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8080';
 export const API_BASE_URL = `${BASE_URL}/api/v1`;
 
 const apiClient = axios.create({

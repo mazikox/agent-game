@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:8080/api/v1/auth';
+const API_BASE_URL = `${process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8080'}/api/v1/auth`;
 
 const authClient = axios.create({
   baseURL: API_BASE_URL,
