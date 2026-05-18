@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { agentApi } from '../../../api/agentApi';
 import { combatApi } from '../../../api/combatApi';
 import { useSocket } from '../../../api/SocketContext';
+import { useInteractionPanel } from '../../world/hooks/useInteractionPanel';
 
 /**
  * Custom hook to manage agent state, location sync, and console logs.
@@ -15,6 +16,15 @@ export function useAgentState() {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  const {
+    panel,
+    loading: panelLoading,
+    error: panelError,
+    openPanel,
+    closePanel,
+    executeAction
+  } = useInteractionPanel(agent?.id);
 
   // 1. Log Management
   const addLog = useCallback((message) => {
@@ -237,6 +247,40 @@ export function useAgentState() {
     }
   };
 
+  const handleCreatureClick = useCallback((creature) => {
+    if (!agent?.id) return;
+    openPanel(creature.instanceId, 'CREATURE', creature.name, creature.x, creature.y);
+  }, [agent?.id, openPanel]);
+
+  const handleActionPress = useCallback(async (action) => {
+    if (!agent?.id) return;
+    
+    // Specjalna obsługa akcji, które wymagają dodatkowych parametrów (np. podejście)
+    if (action.actionId === 'approach') {
+      const target = creatures.find(c => c.instanceId === panel?.targetId);
+      if (target) {
+        try {
+          addLog(`Approaching ${target.name}...`);
+          await agentApi.move(agent.id, target.x, target.y);
+          closePanel();
+        } catch (err) {
+          addLog("Approach failed: " + (err.response?.data?.message || err.message));
+        }
+      }
+      return;
+    }
+
+    // Standardowe akcje przez endpoint z deskryptora
+    try {
+      if (action.actionId === 'attack') {
+        addLog(`Initiating combat...`);
+      }
+      await executeAction(action, { agentId: agent.id, creatureId: panel?.targetId });
+    } catch (err) {
+      addLog("Action failed: " + (err.response?.data?.message || err.message));
+    }
+  }, [agent?.id, panel?.targetId, creatures, executeAction, closePanel, addLog]);
+
   return {
     agent,
     location,
@@ -249,6 +293,12 @@ export function useAgentState() {
     approachNearest,
     stopAgent,
     performCombatAction,
-    creatures: (creatures || []).filter(c => c.state === 'ALIVE' || c.state === 'IN_COMBAT')
+    creatures: (creatures || []).filter(c => c.state === 'ALIVE' || c.state === 'IN_COMBAT'),
+    panel,
+    panelLoading,
+    panelError,
+    closePanel,
+    handleCreatureClick,
+    handleActionPress,
   };
 }

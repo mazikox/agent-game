@@ -76,7 +76,7 @@ public class CreatureActionProvider implements ActionProvider {
         actions.add(new ActionDescriptorDto(
             "attack",
             "sword",
-            "/api/v1/combat/initiate",
+            "/api/combat/initiate",
             "POST",
             attackEnabled,
             attackReason

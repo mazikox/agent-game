@@ -35,7 +35,13 @@ function GameContent() {
     attackNearest,
     approachNearest,
     stopAgent,
-    performCombatAction
+    performCombatAction,
+    panel,
+    panelLoading,
+    panelError,
+    closePanel,
+    handleCreatureClick,
+    handleActionPress
   } = useAgentState();
 
   const [activeTab, setActiveTab] = useState('map');
@@ -107,6 +113,12 @@ function GameContent() {
             creatures={creatures || []}
             locationName={location ? location.name : 'Unknown Realm'}
             agentName={agent?.name || 'Shadow-01'}
+            onCreaturePress={handleCreatureClick}
+            interactionPanel={panel}
+            panelLoading={panelLoading}
+            panelError={panelError}
+            onAction={handleActionPress}
+            onClose={closePanel}
           />
         );
       case 'inventory':
@@ -123,6 +135,11 @@ function GameContent() {
             locationName={location ? location.name : 'Unknown Realm'}
             agentName={agent?.name || 'Shadow-01'}
             onPress={(x, y) => setAdminCoords({ x, y })}
+            interactionPanel={panel}
+            panelLoading={panelLoading}
+            panelError={panelError}
+            onAction={handleActionPress}
+            onClose={closePanel}
           />
         );
       default:

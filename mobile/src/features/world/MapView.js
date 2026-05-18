@@ -4,6 +4,7 @@ import { theme } from '../../theme/theme';
 import { MapPin, Atom } from 'lucide-react-native';
 import { MapWindowFrame } from './MapWindowFrame';
 import { WorldTooltip } from './tooltips/WorldTooltip';
+import { ActionPanel } from './ActionPanel';
 
 
 const PulseIcon = ({ children }) => {
@@ -65,7 +66,7 @@ const getMonsterIcon = (name) => {
   return MONSTER_ICONS[name] || require('../../../assets/mobs/bug.png');
 };
 
-const CreatureMarker = ({ creature, mapWidth, mapHeight, onHoverStart, onHoverEnd }) => {
+const CreatureMarker = ({ creature, mapWidth, mapHeight, onHoverStart, onHoverEnd, onPress }) => {
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
   const [measured, setMeasured] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
@@ -83,9 +84,18 @@ const CreatureMarker = ({ creature, mapWidth, mapHeight, onHoverStart, onHoverEn
     },
   } : {};
 
+  const webClickProps = Platform.OS === 'web' ? {
+    onClick: (e) => {
+      e.stopPropagation();
+      onHoverEnd?.();
+      onPress?.(creature);
+    },
+  } : {};
+
   return (
     <View
       {...webHoverProps}
+      {...webClickProps}
       style={{
         position: 'absolute',
         left: `${(Number(creature.x) / Math.max(mapWidth, 1)) * 100}%`,
@@ -149,8 +159,25 @@ const CreatureMarker = ({ creature, mapWidth, mapHeight, onHoverStart, onHoverEn
   );
 };
 
-export const MapView = ({ agentX, agentY, mapWidth, mapHeight, portals = [], creatures = [], locationName = "", agentName = "Shadow-01", onPress }) => {
+export const MapView = ({
+  agentX,
+  agentY,
+  mapWidth,
+  mapHeight,
+  portals = [],
+  creatures = [],
+  locationName = "",
+  agentName = "Shadow-01",
+  onPress,
+  onCreaturePress,
+  interactionPanel = null,
+  panelLoading = false,
+  panelError = null,
+  onAction,
+  onClose,
+}) => {
   const config = MAP_CONFIG[locationName] || MAP_CONFIG['default'];
+
 
   // --- Tooltip state (centralized for all world objects) ---
   const [hoveredObject, setHoveredObject] = useState(null);
@@ -204,6 +231,66 @@ export const MapView = ({ agentX, agentY, mapWidth, mapHeight, portals = [], cre
       cameraPos.y.removeListener(idY);
     };
   }, [cameraPos]);
+
+  // Calculate dynamic position of the ActionPanel next to the target inside mapViewport
+  const getPanelStyle = useCallback(() => {
+    if (!interactionPanel || interactionPanel.targetX === undefined || interactionPanel.targetY === undefined) {
+      return { display: 'none' };
+    }
+
+    const tX = Number(interactionPanel.targetX);
+    const tY = Number(interactionPanel.targetY);
+    const safeMapW = Math.max(mapWidth, 1);
+    const safeMapH = Math.max(mapHeight, 1);
+
+    // Calculate base position inside mapViewport (taking into account camera panning)
+    const basePixelX = (tX / safeMapW) * currentImgW + cameraPosRef.current.x;
+    const basePixelY = (tY / safeMapH) * currentImgH + cameraPosRef.current.y;
+
+    // Apply MapWindowFrame offsets: header (~42px) and border (~1.5px)
+    const uiOffset = { x: 1.5, y: 42 };
+    const targetXInViewport = basePixelX + uiOffset.x;
+    const targetYInViewport = basePixelY + uiOffset.y;
+
+    const panelWidth = 240;
+    const panelHeight = 220;
+    const VIEWPORT_WIDTH = 803;
+    const VIEWPORT_HEIGHT = 844;
+
+    const isRightHalf = targetXInViewport > VIEWPORT_WIDTH / 2;
+    const isBottomHalf = targetYInViewport > VIEWPORT_HEIGHT / 2;
+
+    // Position popover either to the left or right of the clicked node
+    let finalLeft = targetXInViewport + (isRightHalf ? -panelWidth - 30 : 30);
+    let finalTop = targetYInViewport + (isBottomHalf ? -panelHeight + 20 : -40);
+
+    // CONSTRAINT: Prevent overlapping the right sidebar (viewport boundary is 803px)
+    if (finalLeft + panelWidth > VIEWPORT_WIDTH) {
+      finalLeft = VIEWPORT_WIDTH - panelWidth - 5;
+    }
+    if (finalLeft < 5) {
+      finalLeft = 5;
+    }
+
+    // CONSTRAINT: Prevent going off the top or bottom of the viewport
+    if (finalTop + panelHeight > VIEWPORT_HEIGHT) {
+      finalTop = VIEWPORT_HEIGHT - panelHeight - 5;
+    }
+    if (finalTop < 5) {
+      finalTop = 5;
+    }
+
+    return {
+      position: 'absolute',
+      left: finalLeft,
+      top: finalTop,
+      bottom: undefined,
+      right: undefined,
+      zIndex: 600,
+    };
+  }, [interactionPanel, mapWidth, mapHeight, currentImgW, currentImgH]);
+
+
 
 
 
@@ -345,6 +432,7 @@ export const MapView = ({ agentX, agentY, mapWidth, mapHeight, portals = [], cre
                       mapHeight={mapHeight}
                       onHoverStart={handleHoverStart}
                       onHoverEnd={handleHoverEnd}
+                      onPress={onCreaturePress}
                     />
                   ))}
 
@@ -387,6 +475,18 @@ export const MapView = ({ agentX, agentY, mapWidth, mapHeight, portals = [], cre
           // Offset for MapWindowFrame header (~42px) and border (~1.5px)
           uiOffset={{ x: 1.5, y: 42 }}
         />
+
+        {/* Dynamic Action Popover (Rendered outside MapWindowFrame to avoid overflow clipping and sidebar overlap) */}
+        {interactionPanel && (
+          <ActionPanel
+            panel={interactionPanel}
+            loading={panelLoading}
+            error={panelError}
+            onAction={onAction}
+            onClose={onClose}
+            style={getPanelStyle()}
+          />
+        )}
       </Animated.View>
     </View>
   );
@@ -451,29 +551,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     borderRadius: 8,
     textAlign: 'center',
-  },
-  creatureMarker: {
-    position: 'absolute',
-    width: 40,
-    height: 40,
-    marginLeft: -20,
-    marginTop: -20,
-    borderRadius: 20,
-    backgroundColor: '#dc2626',
-    borderColor: '#fca5a5',
-    borderWidth: 2,
-    overflow: 'hidden',
-    shadowColor: '#dc2626',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 1.0,
-    shadowRadius: 8,
-    zIndex: 90,
-    elevation: 5,
-  },
-  creatureIcon: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 12,
   },
   agentMarker: {
     position: 'absolute',

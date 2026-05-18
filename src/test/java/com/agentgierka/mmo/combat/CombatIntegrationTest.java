@@ -222,7 +222,7 @@ class CombatIntegrationTest {
     }
 
     @Test
-    @DisplayName("Should return 500 Internal Server Error when both agent and creature have zero speed")
+    @DisplayName("Should return 400 Bad Request when both agent and creature have zero speed")
     void shouldFailWhenBothSpeedsAreZero() throws Exception {
         // Initial setup to make agent very slow (0)
         transactionTemplate.executeWithoutResult(s -> {
@@ -243,12 +243,12 @@ class CombatIntegrationTest {
         
         when(creatureInstanceRepository.findById(creatureId)).thenReturn(slowCreature);
 
-        // Try initiate - should fail on syncTime with IllegalArgumentException (HTTP 500 mapped by GlobalExceptionHandler)
+        // Try initiate - should fail on syncTime with IllegalArgumentException (HTTP 400 mapped by GlobalExceptionHandler)
         mockMvc.perform(post("/api/combat/initiate")
                 .with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user("CombatPlayer"))
                 .param("agentId", agentId.toString())
                 .param("creatureId", creatureId.toString()))
-                .andExpect(status().isInternalServerError());
+                .andExpect(status().isBadRequest());
     }
 
     @Test
