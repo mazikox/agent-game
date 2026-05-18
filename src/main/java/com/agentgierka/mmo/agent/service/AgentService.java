@@ -36,6 +36,10 @@ public class AgentService {
         return agentRepository.findAll();
     }
 
+    public List<Agent> findByOwner(String username) {
+        return agentRepository.findByOwnerUsername(username);
+    }
+
     @Transactional
     public void assignGoal(UUID agentId, String goal) {
         Agent agent = findAndSync(agentId);

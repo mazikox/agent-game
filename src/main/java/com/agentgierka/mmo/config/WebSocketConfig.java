@@ -3,6 +3,8 @@ package com.agentgierka.mmo.config;
 import com.agentgierka.mmo.security.JwtService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import java.util.List;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.task.AsyncTaskExecutor;
@@ -35,6 +37,9 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     private final JwtService jwtService;
     private final UserDetailsService userDetailsService;
     
+    @Value("${app.cors.allowed-origins:http://localhost:8081,http://localhost:19006,http://127.0.0.1:8081}")
+    private List<String> allowedOrigins;
+    
     @Bean(name = "applicationTaskExecutor")
     public AsyncTaskExecutor applicationTaskExecutor() {
         return new VirtualThreadTaskExecutor("mmo-task-");
@@ -48,11 +53,13 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
-        registry.addEndpoint("/ws")
-                .setAllowedOrigins("http://localhost:8081", "http://localhost:19006", "http://127.0.0.1:8081");
+        String[] origins = allowedOrigins.toArray(new String[0]);
         
         registry.addEndpoint("/ws")
-                .setAllowedOrigins("http://localhost:8081", "http://localhost:19006", "http://127.0.0.1:8081")
+                .setAllowedOriginPatterns(origins);
+        
+        registry.addEndpoint("/ws")
+                .setAllowedOriginPatterns(origins)
                 .withSockJS();
     }
 

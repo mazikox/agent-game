@@ -152,6 +152,7 @@ public class DataInitializer implements CommandLineRunner {
         }
 
         private void initializePlayersAndAgents(Location startingLocation) {
+                // First Account (MasterAdmin)
                 Player master = Player.create("MasterAdmin", passwordEncoder.encode("admin123"));
                 playerRepository.save(master);
 
@@ -174,6 +175,21 @@ public class DataInitializer implements CommandLineRunner {
                 inventory.addItem(new ItemStack(UUID.randomUUID(), goldDef, 10));
 
                 inventoryRepository.save(inventory, scout.getId());
+
+                // Second Account (MasterAdmin2)
+                Player master2 = Player.create("MasterAdmin2", passwordEncoder.encode("admin123"));
+                playerRepository.save(master2);
+
+                Agent scout2 = Agent.create("Ghost-02", master2, startingLocation, 60, 50, 5);
+                agentRepository.save(scout2);
+
+                // Initialize inventory for the second agent
+                Inventory inventory2 = Inventory.createDefault();
+                inventory2.addItem(new ItemStack(UUID.randomUUID(), swordDef, 1));
+                inventory2.addItem(new ItemStack(UUID.randomUUID(), potionDef, 5));
+                inventory2.addItem(new ItemStack(UUID.randomUUID(), goldDef, 10));
+
+                inventoryRepository.save(inventory2, scout2.getId());
         }
 
         private void initializeMonsters(Location forest, Location mine) {

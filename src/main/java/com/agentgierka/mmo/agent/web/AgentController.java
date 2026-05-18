@@ -26,11 +26,14 @@ public class AgentController {
     private final AgentMapper agentMapper;
 
     /**
-     * Lists all agents in the world.
+     * Lists all agents owned by the currently authenticated user.
      */
     @GetMapping
-    public List<AgentDto> listAll() {
-        return agentService.findAll().stream()
+    public List<AgentDto> listAll(java.security.Principal principal) {
+        if (principal == null) {
+            return List.of();
+        }
+        return agentService.findByOwner(principal.getName()).stream()
                 .map(agentMapper::toDto)
                 .collect(Collectors.toList());
     }
