@@ -149,7 +149,8 @@ class AgentServiceTest {
         verify(agentRepository).save(argThat(a -> 
             a.getStatus() == AgentStatus.MOVING && a.getTargetX() == 60
         ));
-        verify(worldStateSynchronizer).syncMovementAfterCommit(agent);
+        verify(worldStateSynchronizer).syncToRedis(agent);
+        verify(worldStateSynchronizer).publishStatusChangedEvent(agent);
     }
 
     @Test

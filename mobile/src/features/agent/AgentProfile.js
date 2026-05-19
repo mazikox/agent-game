@@ -14,8 +14,8 @@ import { CombatPanel } from '../combat/CombatPanel';
 export const AgentProfile = ({
   name = "Shadow-01", 
   level = 1, 
-  hp = 100, 
-  maxHp = 100,
+  hp = null, 
+  maxHp = null,
   stamina = 100, 
   maxStamina = 100, 
   status = "IDLE", 
@@ -48,7 +48,9 @@ export const AgentProfile = ({
   const { SKELETON } = dimensions;
 
   // Calculate percentages for fills
-  const hpPercent = Math.min(100, Math.max(0, (hp / maxHp) * 100));
+  const hpPercent = (hp !== null && maxHp !== null && maxHp > 0)
+    ? Math.min(100, Math.max(0, (hp / maxHp) * 100))
+    : 100;
   const staminaPercent = Math.min(100, Math.max(0, (stamina / maxStamina) * 100));
 
   // Find active creature in combat (WoW-style TargetId with fallback)

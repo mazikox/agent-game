@@ -28,6 +28,9 @@ public class Agent {
     @EqualsAndHashCode.Include
     private UUID id;
 
+    @Version
+    private Long version;
+
     private String name;
 
     @ManyToOne(fetch = FetchType.LAZY)

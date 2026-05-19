@@ -1,6 +1,6 @@
 package com.agentgierka.mmo.engine;
 
-import com.agentgierka.mmo.agent.event.AgentStateUpdatedEvent;
+import com.agentgierka.mmo.agent.event.AgentMovedEvent;
 import com.agentgierka.mmo.agent.model.AgentWorldState;
 import com.agentgierka.mmo.agent.repository.AgentWorldStateRepository;
 import com.agentgierka.mmo.agent.service.AgentPersistenceService;
@@ -97,8 +97,15 @@ public class GameEngine {
                 agentPersistenceService.finalizeMovement(state);
             } else {
                 agentWorldStateRepository.updateAtomic(state);
-                // Broadcast update only if movement is still in progress
-                eventPublisher.publishEvent(new AgentStateUpdatedEvent(state));
+                
+                eventPublisher.publishEvent(new AgentMovedEvent(
+                    state.getAgentId(),
+                    state.getAgentName(),
+                    state.getCurrentLocationId(),
+                    state.getX(),
+                    state.getY(),
+                    state.getVersion()
+                ));
             }
         } catch (Exception e) {
             log.error("Failed to process agent {}", state.getAgentId(), e);

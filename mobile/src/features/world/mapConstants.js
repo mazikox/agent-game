@@ -15,3 +15,8 @@ export const MAP_SETTINGS = {
   // Smoothing factor for camera movement (higher = slower/smoother)
   CAMERA_LERP: 0.1,
 };
+
+export const MAP_VIEWPORT_W = 803;
+export const MAP_VIEWPORT_H = 844;
+export const MAP_CANVAS_SIZE = 800;
+

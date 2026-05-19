@@ -94,6 +94,6 @@ class AgentThinkingServiceTest {
         verify(agentRepository).save(argThat(a -> 
             a.getStatus() == AgentStatus.MOVING && a.getTargetX() == 100
         ));
-        verify(worldStateSynchronizer).syncMovementAfterCommit(any(Agent.class));
+        verify(worldStateSynchronizer).syncToRedis(any(Agent.class));
     }
 }

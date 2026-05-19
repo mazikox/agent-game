@@ -1,11 +1,6 @@
 package com.agentgierka.mmo.agent.web;
 
-import com.agentgierka.mmo.agent.event.AgentArrivedAtWaypointEvent;
-import com.agentgierka.mmo.agent.event.AgentStateUpdatedEvent;
-import com.agentgierka.mmo.agent.event.AgentConsoleLogEvent;
-import com.agentgierka.mmo.agent.model.AgentStatus;
-import com.agentgierka.mmo.agent.model.AgentWorldState;
-import com.agentgierka.mmo.agent.model.MovementType;
+import com.agentgierka.mmo.agent.event.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;
@@ -23,21 +18,51 @@ public class AgentWebSocketController {
 
     private final SimpMessagingTemplate messagingTemplate;
 
+
     @EventListener
-    public void onAgentStateUpdated(AgentStateUpdatedEvent event) {
-        AgentWorldState state = event.getState();
-        String destination = "/topic/agents/" + state.getAgentId();
-        
-        log.debug("Broadcasting update for agent {} to {}", state.getAgentId(), destination);
-        
-        messagingTemplate.convertAndSend(destination, state);
+    public void onAgentMoved(AgentMovedEvent event) {
+        String destination = "/topic/agents/" + event.agentId() + "/position";
+        log.debug("Broadcasting position update for agent {} to {}", event.agentId(), destination);
+        messagingTemplate.convertAndSend(
+            destination,
+            new AgentPositionDto(event.x(), event.y(), event.locationId(), event.version())
+        );
     }
-    
-
 
     @EventListener
-    public void onAgentArrived(AgentArrivedAtWaypointEvent event) {
-        broadcast(event.agentId(), event.agentName(), event.location().getId(), event.x(), event.y());
+    public void onAgentStatusChanged(AgentStatusChangedEvent event) {
+        String destination = "/topic/agents/" + event.agentId() + "/status";
+        log.debug("Broadcasting status update for agent {} to {}", event.agentId(), destination);
+        messagingTemplate.convertAndSend(
+            destination,
+            new AgentStatusDto(event.status(), event.actionDescription(), event.version())
+        );
+    }
+
+    @EventListener
+    public void onAgentHealthChanged(AgentHealthChangedEvent event) {
+        String destination = "/topic/agents/" + event.agentId() + "/health";
+        log.debug("Broadcasting health update for agent {} to {}", event.agentId(), destination);
+        messagingTemplate.convertAndSend(
+            destination,
+            new AgentHealthDto(event.hp(), event.maxHp(), event.version())
+        );
+    }
+
+    @EventListener
+    public void onCombatTargetChanged(AgentCombatTargetChangedEvent event) {
+        String destination = "/topic/agents/" + event.agentId() + "/target";
+        log.debug("Broadcasting target update for agent {} to {}", event.agentId(), destination);
+        messagingTemplate.convertAndSend(
+            destination,
+            new AgentTargetDto(
+                event.targetId(),
+                event.targetName(),
+                event.targetHp(),
+                event.targetMaxHp(),
+                event.version()
+            )
+        );
     }
 
     @EventListener
@@ -52,23 +77,5 @@ public class AgentWebSocketController {
         String destination = "/topic/agents/" + event.agentId() + "/logs";
         log.debug("Broadcasting agent console log to {}: {}", destination, event.message());
         messagingTemplate.convertAndSend(destination, event.message());
-    }
-
-    private void broadcast(java.util.UUID agentId, String agentName, java.util.UUID locationId, int x, int y) {
-        String destination = "/topic/agents/" + agentId;
-        
-        AgentWorldState state = AgentWorldState.builder()
-                .agentId(agentId)
-                .agentName(agentName)
-                .x(x)
-                .y(y)
-                .currentLocationId(locationId)
-                .status(AgentStatus.IDLE)
-                .build();
-
-        log.info("Broadcasting final state for agent {} to {} (Location ID: {})", 
-                 agentId, destination, locationId);
-        
-        messagingTemplate.convertAndSend(destination, state);
     }
 }

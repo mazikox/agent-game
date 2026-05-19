@@ -73,7 +73,7 @@ public class AgentThinkingService {
             }
 
             agentRepository.save(agent);
-            worldStateSynchronizer.syncMovementAfterCommit(agent);
+            worldStateSynchronizer.syncToRedis(agent);
 
         } catch (Exception e) {
             handleThinkingError(agent, e);

@@ -51,19 +51,19 @@ export const SocketProvider = ({ children }) => {
     }
   };
 
-  const subscribeToAgent = (agentId, onMessage) => {
+
+  const subscribeToSubTopic = (agentId, subtopic, onMessage) => {
     if (!stompClient.current || !connected) return null;
 
-    const topic = `/topic/agents/${agentId}`;
+    const topic = `/topic/agents/${agentId}/${subtopic}`;
     console.log(`Subscribing to ${topic}`);
-    
+
     const subscription = stompClient.current.subscribe(topic, (message) => {
       const payload = JSON.parse(message.body);
       console.log(`[Socket] Message from ${topic}:`, payload);
       onMessage(payload);
     });
 
-    subscriptions.current[agentId] = subscription;
     return subscription;
   };
 
@@ -80,12 +80,6 @@ export const SocketProvider = ({ children }) => {
     return subscription;
   };
 
-  const unsubscribeFromAgent = (agentId) => {
-    if (subscriptions.current[agentId]) {
-      subscriptions.current[agentId].unsubscribe();
-      delete subscriptions.current[agentId];
-    }
-  };
 
   const subscribeToLocationCreatures = (locationId, onSpawn, onKill) => {
     if (!stompClient.current || !connected) return null;
@@ -125,8 +119,7 @@ export const SocketProvider = ({ children }) => {
       connected, 
       connect, 
       disconnect, 
-      subscribeToAgent, 
-      unsubscribeFromAgent, 
+      subscribeToSubTopic, 
       subscribeToLocationCreatures,
       subscribeToCombatLogs
     }}>

@@ -22,6 +22,8 @@ import com.agentgierka.mmo.inventory.infrastructure.db.ItemDefinitionDictionary;
 import com.agentgierka.mmo.inventory.domain.Inventory;
 import com.agentgierka.mmo.inventory.domain.ItemStack;
 import com.agentgierka.mmo.inventory.domain.ItemDefinition;
+import com.agentgierka.mmo.combat.repository.CombatRepository;
+import com.agentgierka.mmo.combat.model.CombatStatus;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
@@ -60,6 +62,7 @@ public class DataInitializer implements CommandLineRunner {
         private final ItemDefinitionRepository itemDefinitionRepository;
         private final ItemDefinitionMapper itemDefinitionMapper;
         private final ItemDefinitionDictionary itemDefinitionDictionary;
+        private final CombatRepository combatRepository;
 
         @Override
         @Transactional
@@ -86,6 +89,14 @@ public class DataInitializer implements CommandLineRunner {
                 // Clear Redis state on every boot to avoid "ghosts" in terminal
                 agentWorldStateRepository.deleteAll();
                 creatureInstanceRepository.deleteAll();
+
+                // Abandon active combats to avoid crash on dead/missing creature UUIDs after restart
+                combatRepository.findAll().stream()
+                        .filter(c -> c.getStatus() == CombatStatus.ONGOING)
+                        .forEach(c -> {
+                                c.abandon();
+                                combatRepository.save(c);
+                        });
         }
 
         private void initializeAllData() {

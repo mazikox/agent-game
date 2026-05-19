@@ -18,6 +18,7 @@ import { useFonts, Cinzel_700Bold } from '@expo-google-fonts/cinzel';
 import { Lora_400Regular, Lora_700Bold } from '@expo-google-fonts/lora';
 
 import { useAgentState } from './src/features/agent/hooks/useAgentState';
+import { authService } from './src/api/authService';
 
 /**
  * Main Content component that uses the SocketContext.
@@ -179,10 +180,10 @@ function GameContent() {
 
           <HUDElement id="AGENT_PROFILE">
             <AgentProfile
-              name={agent?.name || 'Shadow-01'}
-              level={agent?.level || 1}
-              hp={agent?.hp || 100}
-              maxHp={agent?.maxHp || 100}
+              name={agent?.name ?? 'Shadow-01'}
+              level={agent?.level ?? 1}
+              hp={agent?.hp ?? 100}
+              maxHp={agent?.maxHp ?? 100}
               status={agent?.status}
               x={agent?.x}
               y={agent?.y}
@@ -239,7 +240,7 @@ function GameContent() {
 }
 
 export default function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(!!authService.getToken());
 
   // FONT LOADING
   const [fontsLoaded] = useFonts({

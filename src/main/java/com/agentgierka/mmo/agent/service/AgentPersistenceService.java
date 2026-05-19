@@ -24,6 +24,7 @@ public class AgentPersistenceService {
     private final ApplicationEventPublisher eventPublisher;
     private final WorldInteractionService worldInteractionService;
     private final AgentService agentService;
+    private final WorldStateSynchronizer worldStateSynchronizer;
 
     @Transactional
     public void finalizeMovement(AgentWorldState state) {
@@ -55,6 +56,10 @@ public class AgentPersistenceService {
                     agent.getY(),
                     MovementType.NORMAL
             ));
+            
+            worldStateSynchronizer.publishMovedEvent(agent);
+            worldStateSynchronizer.publishStatusChangedEvent(agent);
+            
             log.info("Agent {} reached destination. Emitted arrival event.", agent.getName());
         }
     }

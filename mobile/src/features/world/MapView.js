@@ -5,6 +5,7 @@ import { MapPin, Atom } from 'lucide-react-native';
 import { MapWindowFrame } from './MapWindowFrame';
 import { WorldTooltip } from './tooltips/WorldTooltip';
 import { ActionPanel } from './ActionPanel';
+import { MAP_VIEWPORT_W, MAP_VIEWPORT_H, MAP_CANVAS_SIZE } from './mapConstants';
 
 
 const PulseIcon = ({ children }) => {
@@ -254,27 +255,25 @@ export const MapView = ({
 
     const panelWidth = 240;
     const panelHeight = 220;
-    const VIEWPORT_WIDTH = 803;
-    const VIEWPORT_HEIGHT = 844;
 
-    const isRightHalf = targetXInViewport > VIEWPORT_WIDTH / 2;
-    const isBottomHalf = targetYInViewport > VIEWPORT_HEIGHT / 2;
+    const isRightHalf = targetXInViewport > MAP_VIEWPORT_W / 2;
+    const isBottomHalf = targetYInViewport > MAP_VIEWPORT_H / 2;
 
     // Position popover either to the left or right of the clicked node
     let finalLeft = targetXInViewport + (isRightHalf ? -panelWidth - 30 : 30);
     let finalTop = targetYInViewport + (isBottomHalf ? -panelHeight + 20 : -40);
 
-    // CONSTRAINT: Prevent overlapping the right sidebar (viewport boundary is 803px)
-    if (finalLeft + panelWidth > VIEWPORT_WIDTH) {
-      finalLeft = VIEWPORT_WIDTH - panelWidth - 5;
+    // CONSTRAINT: Prevent overlapping the right sidebar (viewport boundary is MAP_VIEWPORT_W)
+    if (finalLeft + panelWidth > MAP_VIEWPORT_W) {
+      finalLeft = MAP_VIEWPORT_W - panelWidth - 5;
     }
     if (finalLeft < 5) {
       finalLeft = 5;
     }
 
     // CONSTRAINT: Prevent going off the top or bottom of the viewport
-    if (finalTop + panelHeight > VIEWPORT_HEIGHT) {
-      finalTop = VIEWPORT_HEIGHT - panelHeight - 5;
+    if (finalTop + panelHeight > MAP_VIEWPORT_H) {
+      finalTop = MAP_VIEWPORT_H - panelHeight - 5;
     }
     if (finalTop < 5) {
       finalTop = 5;
@@ -294,7 +293,7 @@ export const MapView = ({
 
 
 
-  const VIEWPORT = 800;
+  const VIEWPORT = MAP_CANVAS_SIZE;
   const imgW = currentImgW;
   const imgH = currentImgH;
 
@@ -327,8 +326,8 @@ export const MapView = ({
     const offsetX = VIEWPORT / 2 - agentPixelX;
     const offsetY = VIEWPORT / 2 - agentPixelY;
 
-    const targetX = Math.min(0, Math.max(VIEWPORT - currentImgW, offsetX));
-    const targetY = Math.min(0, Math.max(VIEWPORT - currentImgH, offsetY));
+    const targetX = Math.min(0, Math.max(MAP_CANVAS_SIZE - currentImgW, offsetX));
+    const targetY = Math.min(0, Math.max(MAP_CANVAS_SIZE - currentImgH, offsetY));
 
     Animated.parallel([
       Animated.timing(agentPosPerc, {
@@ -500,20 +499,20 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   mapViewport: {
-    width: 803,
-    height: 844,
+    width: MAP_VIEWPORT_W,
+    height: MAP_VIEWPORT_H,
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
   },
   mapWindow: {
-    width: 803,
-    height: 844,
+    width: MAP_VIEWPORT_W,
+    height: MAP_VIEWPORT_H,
     borderRadius: 8,
   },
   canvas: {
-    width: 800,
-    height: 800,
+    width: MAP_CANVAS_SIZE,
+    height: MAP_CANVAS_SIZE,
     overflow: 'hidden',
     position: 'relative',
     ...(Platform.OS === 'web' ? { 'data-tooltip-canvas': 'true' } : {}),

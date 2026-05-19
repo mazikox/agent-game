@@ -47,7 +47,8 @@ public class AgentService {
         agent.assignGoal(goal);
         agentRepository.save(agent);
 
-        worldStateSynchronizer.syncMovementAfterCommit(agent);
+        worldStateSynchronizer.syncToRedis(agent);
+        worldStateSynchronizer.publishStatusChangedEvent(agent);
 
         eventPublisher.publishEvent(new GoalAssignedEvent(agentId));
     }
@@ -60,7 +61,8 @@ public class AgentService {
         agentRepository.save(agent);
         
         // Sync with Redis to stop movement IMMEDIATELY
-        worldStateSynchronizer.syncMovementAfterCommit(agent);
+        worldStateSynchronizer.syncToRedis(agent);
+        worldStateSynchronizer.publishStatusChangedEvent(agent);
     }
 
     @Transactional(readOnly = true)
@@ -95,7 +97,8 @@ public class AgentService {
         agent.startMovement(targetX, targetY, "Preparing to move to (" + targetX + ", " + targetY + ")");
         Agent savedAgent = agentRepository.save(agent);
 
-        worldStateSynchronizer.syncMovementAfterCommit(agent);
+        worldStateSynchronizer.syncToRedis(agent);
+        worldStateSynchronizer.publishStatusChangedEvent(agent);
 
         return savedAgent;
     }

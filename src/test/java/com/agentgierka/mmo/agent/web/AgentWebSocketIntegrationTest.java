@@ -1,7 +1,6 @@
 package com.agentgierka.mmo.agent.web;
 
-import com.agentgierka.mmo.agent.event.AgentStateUpdatedEvent;
-import com.agentgierka.mmo.agent.model.AgentWorldState;
+import com.agentgierka.mmo.agent.event.AgentMovedEvent;
 import com.agentgierka.mmo.security.JwtService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -54,12 +53,13 @@ class AgentWebSocketIntegrationTest {
     }
 
     @Test
-    void shouldReceiveAgentUpdateOverWebSocket() throws Exception {
+    void shouldReceiveAgentMovedUpdateOverWebSocket() throws Exception {
         // Given
         UUID agentId = UUID.randomUUID();
+        UUID locationId = UUID.randomUUID();
         String token = generateTestToken("player1");
         
-        BlockingQueue<AgentWorldState> blockingQueue = new LinkedBlockingDeque<>();
+        BlockingQueue<AgentPositionDto> blockingQueue = new LinkedBlockingDeque<>();
         
         StompHeaders connectHeaders = new StompHeaders();
         connectHeaders.add("Authorization", "Bearer " + token);
@@ -69,33 +69,31 @@ class AgentWebSocketIntegrationTest {
                 .connectAsync(String.format("ws://localhost:%d/ws", port), (org.springframework.web.socket.WebSocketHttpHeaders) null, connectHeaders, new StompSessionHandlerAdapter() {})
                 .get(5, TimeUnit.SECONDS);
 
-        session.subscribe("/topic/agents/" + agentId, new StompFrameHandler() {
+        session.subscribe("/topic/agents/" + agentId + "/position", new StompFrameHandler() {
             @Override
             public Type getPayloadType(StompHeaders headers) {
-                return AgentWorldState.class;
+                return AgentPositionDto.class;
             }
 
             @Override
             public void handleFrame(StompHeaders headers, Object payload) {
-                blockingQueue.add((AgentWorldState) payload);
+                blockingQueue.add((AgentPositionDto) payload);
             }
         });
 
-        // Simulae Game Engine event
-        AgentWorldState state = AgentWorldState.builder()
-                .agentId(agentId)
-                .x(100).y(200)
-                .build();
+        // Simulate Game Engine event
+        AgentMovedEvent event = new AgentMovedEvent(agentId, "Thinker", locationId, 100, 200, 1L);
         
         Thread.sleep(500); // Give time for subscription to settle
-        eventPublisher.publishEvent(new AgentStateUpdatedEvent(state));
+        eventPublisher.publishEvent(event);
 
         // Then
-        AgentWorldState receivedState = blockingQueue.poll(5, TimeUnit.SECONDS);
+        AgentPositionDto receivedState = blockingQueue.poll(5, TimeUnit.SECONDS);
         assertThat(receivedState).isNotNull();
-        assertThat(receivedState.getAgentId()).isEqualTo(agentId);
-        assertThat(receivedState.getX()).isEqualTo(100);
-        assertThat(receivedState.getY()).isEqualTo(200);
+        assertThat(receivedState.x()).isEqualTo(100);
+        assertThat(receivedState.y()).isEqualTo(200);
+        assertThat(receivedState.locationId()).isEqualTo(locationId);
+        assertThat(receivedState.version()).isEqualTo(1L);
     }
 
     private String generateTestToken(String username) {

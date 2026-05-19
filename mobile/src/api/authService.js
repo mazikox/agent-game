@@ -10,7 +10,36 @@ const authClient = axios.create({
   },
 });
 
-let authToken = null;
+// Safe zero-dependency persistence helper for Expo Web & native fallbacks
+const storage = {
+  getItem: (key) => {
+    try {
+      return typeof window !== 'undefined' && window.localStorage ? window.localStorage.getItem(key) : null;
+    } catch (e) {
+      return null;
+    }
+  },
+  setItem: (key, value) => {
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        window.localStorage.setItem(key, value);
+      }
+    } catch (e) {
+      // ignore
+    }
+  },
+  removeItem: (key) => {
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        window.localStorage.removeItem(key);
+      }
+    } catch (e) {
+      // ignore
+    }
+  }
+};
+
+let authToken = storage.getItem('authToken');
 
 export const authService = {
   /**
@@ -27,6 +56,7 @@ export const authService = {
     const response = await authClient.post('/login', { username, password });
     if (response.data && response.data.token) {
       authToken = response.data.token;
+      storage.setItem('authToken', authToken);
       return authToken;
     }
     throw new Error("Logowanie nie powiodło się - brak tokenu");
@@ -42,5 +72,6 @@ export const authService = {
    */
   logout: () => {
     authToken = null;
+    storage.removeItem('authToken');
   }
 };

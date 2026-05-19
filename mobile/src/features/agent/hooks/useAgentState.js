@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { agentApi } from '../../../api/agentApi';
 import { combatApi } from '../../../api/combatApi';
 import { useSocket } from '../../../api/SocketContext';
@@ -9,13 +9,29 @@ import { useInteractionPanel } from '../../world/hooks/useInteractionPanel';
  * Encapsulates all WebSocket and API orchestration logic.
  */
 export function useAgentState() {
-  const { connected, connect, subscribeToAgent, subscribeToLocationCreatures, subscribeToCombatLogs } = useSocket();
+  const { connected, connect, subscribeToSubTopic, subscribeToLocationCreatures, subscribeToCombatLogs } = useSocket();
   const [agent, setAgent] = useState(null);
   const [location, setLocation] = useState(null);
   const [creatures, setCreatures] = useState([]);
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  
+  const versions = useRef({
+    position: -1,
+    status: -1,
+    health: -1,
+    target: -1
+  });
+
+  useEffect(() => {
+    versions.current = {
+      position: -1,
+      status: -1,
+      health: -1,
+      target: -1
+    };
+  }, [agent?.id]);
 
   const {
     panel,
@@ -78,28 +94,71 @@ export function useAgentState() {
   useEffect(() => {
     if (!agent?.id || !connected) return;
 
-    const subscription = subscribeToAgent(agent.id, (updatedState) => {
+    const positionSub = subscribeToSubTopic(agent.id, 'position', (data) => {
+      if (data.version <= versions.current.position) return;
+      versions.current.position = data.version;
+
       setAgent(prev => {
-        const nextLocId = updatedState.currentLocationId || prev?.currentLocationId;
+        if (!prev) return prev;
         return {
           ...prev,
-          x: updatedState.x,
-          y: updatedState.y,
-          status: updatedState.status,
-          currentLocationId: nextLocId,
-          maxHp: updatedState.maxHp || prev?.maxHp || 100,
-          hp: updatedState.hp !== undefined ? updatedState.hp : prev?.hp,
-          targetId: updatedState.targetId,
-          targetName: updatedState.targetName,
-          targetHp: updatedState.targetHp,
-          targetMaxHp: updatedState.targetMaxHp,
-          currentActionDescription: updatedState.currentActionDescription
+          x: data.x,
+          y: data.y,
+          currentLocationId: data.locationId || prev.currentLocationId
+        };
+      });
+    });
+
+    const statusSub = subscribeToSubTopic(agent.id, 'status', (data) => {
+      if (data.version <= versions.current.status) return;
+      versions.current.status = data.version;
+
+      if (data.status === 'MOVING') {
+        versions.current.position = 0;
+      }
+
+      setAgent(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          status: data.status,
+          currentActionDescription: data.actionDescription
         };
       });
 
-      if (updatedState.currentActionDescription) {
-        addLog(updatedState.currentActionDescription);
+      if (data.actionDescription) {
+        addLog(data.actionDescription);
       }
+    });
+
+    const healthSub = subscribeToSubTopic(agent.id, 'health', (data) => {
+      if (data.version <= versions.current.health) return;
+      versions.current.health = data.version;
+
+      setAgent(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          hp: data.hp,
+          maxHp: data.maxHp
+        };
+      });
+    });
+
+    const targetSub = subscribeToSubTopic(agent.id, 'target', (data) => {
+      if (data.version <= versions.current.target) return;
+      versions.current.target = data.version;
+
+      setAgent(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          targetId: data.targetId,
+          targetName: data.targetName,
+          targetHp: data.targetHp,
+          targetMaxHp: data.targetMaxHp
+        };
+      });
     });
 
     const combatSubscription = subscribeToCombatLogs(agent.id, (log) => {
@@ -107,10 +166,13 @@ export function useAgentState() {
     });
 
     return () => {
-      subscription.unsubscribe();
       combatSubscription.unsubscribe();
+      if (positionSub) positionSub.unsubscribe();
+      if (statusSub) statusSub.unsubscribe();
+      if (healthSub) healthSub.unsubscribe();
+      if (targetSub) targetSub.unsubscribe();
     };
-  }, [agent?.id, connected, subscribeToAgent, subscribeToCombatLogs, addLog]);
+  }, [agent?.id, connected, subscribeToSubTopic, subscribeToCombatLogs, addLog]);
 
   // 5. Lifecycle: Map / Location details sync and Creatures
   useEffect(() => {
